@@ -1,0 +1,5734 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage>
+		<TriggerGroup isActive="yes" isFolder="yes" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="yes" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>filter broken prompts</name>
+			<script>if (rex.find(matches[1], [[^&lt;]])) then
+  -- echo(' &lt;- prompt\n')
+  raiseEvent(njs50.scanner.events.PROMPT)
+ end</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^(?:&lt;[^&gt;]+&gt;)?([^&lt;].*)$</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>scanner</name>
+				<script>-- failing on: &lt;799hp 1304e 190mv 190wm 97384212xp NE&gt;      [Here] : Mohoonay, a tall, well-built horse, Grehild
+
+      -- [Here] : Grehild, Darius, Affenaut, Uduvrin, Alavela, a Medienne Knight,
+               -- a knight's heavy charger
+        -- east : a Medienne guard
+
+       -- scan : nothing in the vicinity
+
+-- You see nothing in the vicinity.
+if (matches[1] == 'You see nothing in the vicinity.' or matches[2] == 'scan') then
+	
+		-- echo(' &lt;-- reset exits')
+  	njs50.scanner.resetExits();
+	-- cecho(' &lt;- &lt;green&gt;SCANNER: &lt;white&gt;clear\n')
+	raiseEvent(njs50.scanner.events.SCAN_PROCESSED)
+		
+else 
+
+  local direction = matches[2]:gsub('^%s+','')
+  
+  if (direction ~= '' or njs50.scanner.scan_in_progress) then
+  
+    if (matches[3] == 'darkness') then
+      njs50.scanner.scannedLine(direction, 'darkness')
+      cecho('\n&lt;orange&gt;SCANNER: &lt;white&gt;should create better light before continuing\n')    
+    else			
+  		
+      -- sometimes scan is jammed in with other content. scan lines are always indented with spaces
+      -- so matches[2] should either be a bunch of space or a direction
+      if (matches[3] ~= '' and matches[2] ~= '') then
+  		  njs50.scanner.scannedLine(direction, matches[3])
+      else
+        -- scanning done, no need to wait for prompt (in case there is other junk before it)
+        njs50.scanner.endScan()        
+      end
+  	 	
+    end 
+  
+  end
+		
+ end -- end (if you see nothing)
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^\s+(north|east|south|west|up|down|scan|\[Here\])\s+:\s+(.+?),?$</string>
+					<string>^\s+((?:far|north|east|south|west|up|down) (?:north|east|south|west|up|down))\s+:\s+(.+?),?$</string>
+					<string>You see nothing in the vicinity.</string>
+					<string>^(\s*)(.*?),?$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>2</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="no" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>rescan if something died</name>
+				<script>-- 
+if (combat and not combat.active and murder and murder.scan) then
+  if (group.leader == player.name) then
+    murder.scan('rescan because something died (out of combat)')
+  -- else
+    -- cecho('&lt;green&gt;&lt;-- skipped scan due to not being leader\n')
+  end
+-- else  
+  -- cecho('&lt;green&gt;MAPPER:&lt;white&gt; &lt;-- skipped scan due to combat.active:'.. tostring(combat.active) .. '\n')
+end
+
+--       A fair gnomish lass is DEAD!!</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^\s+(An?|The) (.*) is DEAD!!</string>
+					<string>^(An?|The) (.*) blindly flees </string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>rescan if we regain sight</name>
+				<script>-- 
+if (murder and murder.scan) then
+  if (group.leader == player.name) then
+    murder.scan('rescan because we can see again')
+  -- else
+    -- cecho('&lt;green&gt;&lt;-- skipped scan due to not being leader\n')
+  end
+end
+
+--       A fair gnomish lass is DEAD!!</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You can see again.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>You can't do that while mounted.</name>
+				<script>njs50.onNextEvent(tfe.events.ROOM_CHANGED, function ()
+  send('mount')
+end)
+send('dismount')
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You can't do that while mounted.</string>
+					<string>You can't do that while mounted!</string>
+					<string>You cannot go there while mounted.</string>
+					<string>^\w+ is too large to fit through the .* to the (north|east|south|west)\.</string>
+					<string>^\w+ is too large to fit through the hole beneath the dune below you\.</string>
+					<string>^\w+ cannot be ridden underwater\.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+					<integer>2</integer>
+					<integer>2</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="yes" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>no exit - use special exit</name>
+				<script>-- disableTrigger('no exit - use special exit')
+
+-- cause a turbo walk to be flagged interrupted if it isn't already
+if (tfe.speedwalking and tfe.speedwalking.walkType == 'turbo') then
+  tfe.turboWalkInterrupted()
+end
+
+
+local exit = matches[2]
+
+if (exit == 'below') then exit = 'down' end
+if (exit == 'above') then exit = 'up' end
+
+-- if an exit opens scan
+
+
+
+
+-- 
+local exits = getRoomExits(tfe.roomInfo.num)
+local specialExits = getSpecialExits(tfe.roomInfo.num)
+
+if (exits and specialExits) then
+
+  local targetRoom = exits[exit]
+  
+  if (targetRoom and specialExits[targetRoom]) then
+    for command, idx in pairs(specialExits[targetRoom]) do 
+      send(command)
+    end
+  else
+    njs50.tempTimedNextEvent(5, njs50.gmcp.events.ROOM_EXITS_UPDATE, function()
+      send('scan')
+    end)  
+    tfe.openExit(exit)    
+  end
+
+else
+  
+  njs50.tempTimedNextEvent(5, njs50.gmcp.events.ROOM_EXITS_UPDATE, function()
+    send('scan')
+  end)  
+  tfe.openExit(exit)
+  
+end
+-- 
+-- tempTimer(1, function ()
+	-- enableTrigger('no exit - use special exit')
+-- end, 'reenable closed door trig')</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You see no exit to the (.*)\.</string>
+					<string>^You see no exit (.*) you\.</string>
+					<string>^The .+ to the (.+) (is|are) closed.</string>
+					<string>^The .* (below|above) you (is|are) closed.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>tell me path x to y</name>
+				<script>local vic = matches[2]
+local src = matches[3]
+
+local dest = matches[4]
+
+
+local path = tfe.getPath(src, dest)
+
+if (path.error) then
+  
+  cecho('\n\n&lt;red&gt;TFE MAP:&lt;white&gt; ' .. path.error .. '\n\n')
+  send('tell ' .. vic .. ' ' .. path.error)
+
+else
+
+  send('tell ' .. vic .. ' to go from ' .. path.from .. ' to ' .. path.to .. ' do:')
+  send('tell ' .. vic .. ' ' .. rex.gsub(table.concat(path.path, ' &amp; '), ' &amp; ', ' \\&amp; '))
+  
+end</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^([A-Za-z]+) .*tells you:\s*"path (.+) to (.+?)\??"$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>where is x</name>
+				<script>local vic = matches[2]
+local dest = matches[3]
+
+tfe.mapFind(dest, 'tell ' .. vic)</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^([A-Za-z]+) .*tells you:\s*"find (.+)"$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>modify exits line</name>
+				<script>if (gmcp and gmcp.Room and gmcp.Room.Info) then
+  
+  local offset
+  if (matches[1] == "[Exits:") then
+    offset = -1
+  else
+    offset = -3
+  end
+  
+  moveCursor(0, getLineNumber() + offset)
+  
+  -- remove some whitespace to keep things centered
+  if (offset == -3) then
+    selectString("    ", 1)
+    replace("")
+  end
+  
+  moveCursor(rex.find(getCurrentLine(), [[\S]]) - 1, getLineNumber())
+  fg("red")
+  insertText('#' .. tostring(gmcp.Room.Info.num) .. ' ')
+  moveCursorEnd()
+  resetFormat()
+  
+  -- add zone changes
+  
+  if (matches[1] == "[Exits:") then
+    local text = getCurrentLine()
+    for exit, data in pairs(gmcp.Room.Info.exit_info) do
+      if (data.area_id ~= gmcp.Room.Info.area_id) then
+        text = text:gsub(exit, '&lt;yellow&gt;' .. exit .. '&lt;reset&gt; (' .. data.area .. ')')
+      end
+    end
+    selectCurrentLine()
+    creplace(text)  
+    deselect()
+  else
+    local text = ''
+    for exit, data in pairs(gmcp.Room.Info.exit_info) do
+      if (data.area_id ~= gmcp.Room.Info.area_id) then
+        text = text .. '&lt;yellow&gt;' .. exit .. '&lt;reset&gt; is ' .. data.area .. '. '
+      end
+    end
+    
+    if (text ~= '') then
+      cecho('\n| ' .. text .. '\n')
+    end
+  
+  end
+end</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>[Exits:</string>
+					<string>^\|      Exits:.*$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>tell me locations</name>
+				<script>local vic = matches[2]
+
+
+local locStr = ''
+local idx = 0
+
+for loc, rnum in spairs(tfe.locations) do
+  
+  idx = idx + 1
+  
+  if (idx % 25 == 1 and locStr ~= '') then
+    send('tell ' .. vic .. ' I know about: ' .. locStr)
+    locStr = ''
+  end
+  
+  if (idx % 25 ~= 1) then locStr = locStr .. ', ' end
+  
+  locStr = locStr .. loc
+
+end
+
+if (locStr ~= '') then
+  send('tell ' .. vic .. ' I know about: ' .. locStr)
+end
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^([A-Za-z]+) .*tells you:\s*"locations"$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>pending movement</name>
+				<script>-- You stomp west.
+-- You leave east.
+-- You ride Stinky east.
+-- 
+-- tfe.pendingMoveDirection = matches[2]
+
+raiseEvent(tfe.events.ROOM_CHANGE_PENDING, matches[2])</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You (?:\w+|ride \w+) (north|east|south|west|up|down)\.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Speed walking interrupted/aborted.</name>
+				<script>-- maybe don't need to do anything. idle timer may take care of it...
+
+-- You see no exit to the south.
+
+if (tfe.speedwalking and tfe.speedwalking.walkType == 'turbo') then
+  tfe.turboWalkInterrupted()
+end
+
+if (matches[2] and matches[2] ~= '') then
+  raiseEvent(tfe.events.EXIT_BLOCKED, matches[2])
+end</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>Speed walking aborted.</string>
+					<string>^(.*) is blocking the \w+ to the (north|east|south|west|up|down)\.$</string>
+					<string>^(.*) is blocking the \w+ (above|below) you\.$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>something died while speedwalking</name>
+				<script>if (tfe.speedwalking and tfe.speedwalking.walkType == 'turbo' and tfe.speedwalking.interrupted) then
+
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;turbo walk resumed on seeing something die\n')
+
+  if (common and common.events and common.events.COMBAT_ENDED) then
+    
+    if (combat and combat.active) then
+      
+      -- don't setup resume if a resume is already pending on combat ending
+      if (not tfe.speedwalking.resumePending) then
+        tfe.speedwalking.resumePending = true
+        common.onNextEvent(common.events.COMBAT_ENDED, function()
+          tfe.speedwalking.resumePending = nil
+          tfe.turboWalkResume()
+        end)
+      end
+      
+    else
+      -- don't resume if we have another resume queued for the end of combat
+      if (not tfe.speedwalking.resumePending) then
+        tfe.turboWalkResume()
+      end
+    end
+    
+  else
+  
+    tfe.turboWalkResume()
+    
+  end
+  
+end
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>is DEAD!!$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>turbo walk was interrupted by a random event we can recover from</name>
+				<script>tfe.speedwalking.resumeOnInterrupt = true
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You get stuck on some thorns.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="no" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>run outa moves during turbo go</name>
+				<script>-- You are too exhausted.
+if (tfe.speedwalking and tfe.speedwalking.walkType == 'turbo') then
+  
+  -- debounce this trigger
+  disableTrigger('run outa moves during turbo go')  
+  tempTimer(2, function()
+    enableTrigger('run outa moves during turbo go')
+  end)
+  
+  tfe.turboWalkPause()
+  send('gstat I have run outa moves during a speed walk')
+  
+  njs50bot.sleepUntilFull(function()
+    tfe.turboWalkResume()
+  end)
+  
+end</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You are too exhausted.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>serene sunshine exit changes</name>
+				<script>tfe.updateRoomExits()
+
+-- murder.reroute()</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^As you take a step toward the (north|east|south|west), you quickly realize that the ground will not bear your weight!!!</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>You trudge onward in what you THINK is the right direction</name>
+				<script>if (tfe.speedwalking and gmcp.Room.Info.area == 'Naraki Desert') then
+  
+  cecho('\n\n&lt;green&gt;MAPPER:&lt;white&gt; lost in desert... advancing\n')
+  
+  if (tfe.speedwalking and tfe.speedwalking.walkType == 'turbo') then
+    
+    tfe.turboWalkPause()    
+    tempTimer(2, tfe.turboWalkResume, 'waiting for turbo to pause before resume')
+  
+  else 
+    
+    tfe.rerouteSpeedwalk()
+    tfe.speedWalkStep()
+    
+  end
+
+  
+end</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You trudge onward in what you THINK is the right direction</string>
+					<string>As you enter the next part of the desert, you know for certain you are lost.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>2</integer>
+					<integer>2</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>room specific warnings</name>
+				<script>-- let the rdesc come before doing anything
+tempTimer(0, function()
+  
+  if (gmcp.Room.Info.num == 29068) then
+    cecho('\n\n&lt;green&gt;MAPPER:&lt;white&gt; danger, do not touch the dagger or you can\'t pop the flail!!!\n\n')
+  end
+  
+end)</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>[Exits:</string>
+					<string>^\|      Exits:.*$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>0</integer>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+		</TriggerGroup>
+	</TriggerPackage>
+	<TimerPackage />
+	<AliasPackage>
+		<Alias isActive="yes" isFolder="no">
+			<name>map reset</name>
+			<script>local commands = {
+  
+  reset = function(thing)
+    if (thing == 'area') then
+      tfe.deleteCurrentMapArea()
+    end
+  end,
+  
+}
+
+if (commands[matches[2]]) then
+  commands[matches[2]](matches[3])
+else
+  cecho('&lt;red&gt;TFE MAP: &lt;white&gt;unknown command - ' .. matches[2] .. '\n\n')
+end</script>
+			<command />
+			<packageName />
+			<regex>^map (reset)\s?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map search</name>
+			<script>njs50.search()</script>
+			<command />
+			<packageName />
+			<regex>^(map search|ms)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>go</name>
+			<script>local dest = matches[2]
+
+tfe.locations = tfe.locations or {}
+
+local fatalError = false
+
+local rnum = tfe.locations[dest] or dest
+
+if (type(rnum) == 'string' and rnum:match([[^%d+$]])) then
+  rnum = tonumber(rnum)
+end
+
+if (type(rnum) == 'table' or (type(rnum) == 'number' and roomExists(rnum))) then
+
+  if type(rnum) == 'table' then
+
+    local rnames = {}
+  
+    table.foreach(rnum, function(idx, num)
+      if roomExists(num) then
+        table.insert(rnames, getRoomName(num))
+      else
+        fatalError = true
+        cecho('\n&lt;red&gt;TFE MAP:&lt;white&gt; unknown room number in path: ' .. tostring(num) .. '\n')                    
+      end
+    end)      
+    
+    local droom = table.remove(rnames, #rnames)
+    
+    cecho('&lt;green&gt;TFE MAP:&lt;white&gt; walking to ' .. droom)    
+    if #rnum &gt; 1 then
+      cecho(' via ' .. table.concat(rnames, ', '))      
+    end    
+    cecho('\n')    
+    
+  else  
+    cecho('&lt;green&gt;TFE MAP:&lt;white&gt; walking to ' .. getRoomName(rnum) .. '\n')  
+  end
+
+
+  local endCmd = matches[3]
+
+  if ( not fatalError ) then
+  	tfe.gotoRoom(rnum, { 
+      callback = function () 
+      		if (endCmd) then
+          for idx, cmd in ipairs(endCmd:split(' &amp;&amp; ')) do
+      			 expandAlias(cmd)
+          end
+      		end
+      	end
+    })
+	end
+  
+else
+	cecho('\n&lt;red&gt;TFE MAP:&lt;white&gt; Invalid location: ' .. tostring(rnum) .. '\n')
+end
+</script>
+			<command />
+			<packageName />
+			<regex>^go (\S+)\s?&amp;?\s?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>turbo go</name>
+			<script>local dest = matches[2]
+
+tfe.locations = tfe.locations or {}
+
+local fatalError = false
+
+local rnum = tfe.locations[dest] or dest
+
+if (type(rnum) == 'string' and rnum:match([[^%d+$]])) then
+  rnum = tonumber(rnum)
+end
+
+if (type(rnum) == 'table' or (type(rnum) == 'number' and roomExists(rnum))) then
+
+  if type(rnum) == 'table' then
+
+    local rnames = {}
+  
+    table.foreach(rnum, function(idx, num)
+      if roomExists(num) then
+        table.insert(rnames, getRoomName(num))
+      else
+        fatalError = true
+        cecho('\n&lt;red&gt;TFE MAP:&lt;white&gt; unknown room number in path: ' .. tostring(num) .. '\n')                    
+      end
+    end)      
+  
+    
+    local droom = table.remove(rnames, #rnames)
+    
+    cecho('&lt;green&gt;TFE MAP:&lt;white&gt; speed walking to ' .. droom)    
+    if #rnum &gt; 1 then
+      cecho(' via ' .. table.concat(rnames, ', '))      
+    end    
+    cecho('\n')    
+    
+  else  
+    cecho('&lt;green&gt;TFE MAP:&lt;white&gt; speed walking to ' .. getRoomName(rnum) .. '\n')  
+  end
+
+
+  local endCmd = matches[3]
+
+  if ( not fatalError ) then
+  	tfe.turboWalkToRoom(rnum, { 
+      callback = function () 
+      		if (endCmd) then
+          for idx, cmd in ipairs(endCmd:split(' &amp;&amp; ')) do
+      			 expandAlias(cmd)
+          end
+      		end
+      	end
+    })
+	end
+  
+else
+	cecho('\n&lt;red&gt;TFE MAP:&lt;white&gt; Invalid speed walk location: ' .. tostring(rnum) .. '\n')
+end</script>
+			<command />
+			<packageName />
+			<regex>^tgo (\S+)\s?&amp;?\s?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>path</name>
+			<script>local src = matches[2]
+local dest = matches[3]
+
+if not dest or dest == '' then
+  dest = src
+  src = gmcp.Room.Info.num
+end
+
+local path = tfe.getPath(src, dest)
+
+if (path.error) then
+  
+  cecho('\n\n&lt;red&gt;TFE MAP:&lt;white&gt; ' .. path.error .. '\n\n')
+
+else
+
+  cecho('&lt;green&gt;TFE MAP:&lt;white&gt; to go from ' .. path.from .. ' to ' .. path.to .. ' is: ' .. table.concat(path.path, ' &amp; ') .. '\n')
+  
+end</script>
+			<command />
+			<packageName />
+			<regex>^path (\S+)\s?(\S+)?$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>^(stop|pause|resume)$</name>
+			<script>
+local commands = {
+  stop = tfe.speedwalkStop,
+  pause = tfe.speedwalkPause,
+  resume = tfe.speedwalkResume,
+}
+
+commands[matches[2]]()</script>
+			<command />
+			<packageName />
+			<regex>^(stop|pause|resume)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map - special exit</name>
+			<script>local dir = matches[2]
+local cmd = matches[3]
+
+display(dir, cmd)
+
+-- cancel an existing special exit if the move failed (maybe we were in the wrong room)
+if (dir ~= 'cancel') then
+  
+  if (tfe.pendingSpecialExit) then
+    tfe.pendingSpecialExit()
+  end
+  
+  tfe.pendingExit = {
+    direction = tfe.consts.reverse_dirs[tfe.consts.exitmap[dir]],
+    vnum = tfe.roomInfo.num
+  }
+   
+  
+  tfe.pendingSpecialExit = njs50.onNextEvent(tfe.events.ROOM_CHANGED, function () 
+  
+    addSpecialExit(tfe.pendingExit.vnum, tfe.roomInfo.num, cmd)
+    cecho('\n\ngreen&gt;MAP:&lt;white&gt; setting special exit (' .. exit .. ')\n')
+    setExit(tfe.pendingExit.vnum, tfe.roomInfo.num, dir)
+    setExitWeight(tfe.pendingExit.vnum, dir, 3)
+      
+    tfe.pendingSpecialExit = nil
+    tfe.pendingExit = nil
+    
+    -- display(tfe.previousRoomInfo.num, 'to', tfe.roomInfo.num, cmd)
+  
+  end)
+  
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; adding special exit!\n')
+  cecho('&lt;green&gt;TFE MAP: &lt;white&gt; type "map exit cancel" to cancel if the command fails to change the room!\n')
+  send(cmd)
+
+else
+
+  if (tfe.pendingSpecialExit) then
+    tfe.pendingSpecialExit()
+  end
+  
+  tfe.pendingExit = nil
+  cecho('\n&lt;yellow&gt;TFE MAP: &lt;white&gt; cancelled adding special exit!\n')
+
+end</script>
+			<command />
+			<packageName />
+			<regex>^map exit (n|e|s|w|u|d|in|out|cancel) ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map - manual connect numbered to current</name>
+			<script>-- not sure we need this anymore, only really useful for retroactively connecting things
+
+local dir = matches[2]
+local room2 = tonumber(matches[3])
+local room1 = tfe.roomInfo.num
+local cmd = matches[4] or ''
+
+-- we may need to create the current room if it is orphaned in the zone from the prev room
+if not roomExists(room1) then
+
+  local areaId = tfe.getAreaID(tfe.roomInfo)
+   
+  local x,y,z = tfe.getRoomCoordinatesByExit(room2, tfe.consts.exitmap[dir])
+  
+  -- echo('\new location is: ' .. tostring(x) .. ', ' .. tostring(y) .. ', ' .. tostring(z) .. ')\n')
+      
+    addRoom(room1)
+	  setRoomArea(tfe.roomInfo.num, areaId);
+	  setRoomName(tfe.roomInfo.num, tfe.roomInfo.name)
+	  setRoomCoordinates(tfe.roomInfo.num, x, y, z)  
+    centerview(tfe.roomInfo.num)
+    
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; added new room - ' .. dir .. ' from ' .. tfe.previousRoomInfo.name .. '\n')
+
+end
+
+
+
+
+if (roomExists(room1) and roomExists(room2)) then
+  
+  cecho('\n\ngreen&gt;MAP:&lt;white&gt; setting manual exit\n')
+  setExit(room2, room1, dir)
+  
+  if (cmd) then        
+    addSpecialExit(room2, room1, cmd) 
+    setExitWeight(room2, dir, 3) -- prioritize special exit
+  end
+  
+  setExit(room2, room1, dir)
+  centerview(room1)
+    
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; connecting existing rooms!\n')
+  
+else
+
+  cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt; room doesn\'t exist in map!: ' .. tostring(room2) .. '\n')
+
+end
+</script>
+			<command />
+			<packageName />
+			<regex>^map add (n|e|s|w|u|d|in|out) (\d+) ?(.*)?$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map - connect current room with previous</name>
+			<script>
+
+local dir = matches[2]
+local cmd = matches[3]
+
+local room1 = tfe.roomInfo.num
+local room2 = tfe.previousRoomInfo.num
+
+
+  -- we may need to create the current room if it is orphaned in the zone from the prev room
+  if not roomExists(room1) then
+  
+    local areaId = tfe.getAreaID(tfe.roomInfo)
+     
+    local x,y,z = tfe.getRoomCoordinatesByExit(room2, tfe.consts.exitmap[dir])
+    
+    -- echo('\new location is: ' .. tostring(x) .. ', ' .. tostring(y) .. ', ' .. tostring(z) .. ')\n')
+        
+      addRoom(tfe.roomInfo.num)
+		  setRoomArea(tfe.roomInfo.num, areaId);
+  	  setRoomName(tfe.roomInfo.num, tfe.roomInfo.name)
+  	  setRoomCoordinates(tfe.roomInfo.num, x, y, z)  
+      centerview(tfe.roomInfo.num)
+      
+      cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; added new room - ' .. dir .. ' from ' .. tfe.previousRoomInfo.name .. '\n')
+  
+  end
+
+
+
+
+if (roomExists(room1) and roomExists(room2)) then
+  
+  cecho('\n\ngreen&gt;MAP:&lt;white&gt; setting connected exit\n')
+  setExit(room2, room1, dir)
+  
+  if (cmd) then        
+    addSpecialExit(room2, room1, cmd) 
+    setExitWeight(room2, dir, 3) -- prioritize special exit
+  end
+  
+  setExit(room2, room1, dir)
+  centerview(room1)
+    
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; connecting existing rooms!\n')
+  
+else
+
+  cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt; room doesn\'t exist in map!: ' .. tostring(room2) .. '\n')
+
+end
+</script>
+			<command />
+			<packageName />
+			<regex>^map connect (n|e|s|w|u|d|in|out) ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>lw</name>
+			<script>
+local areas = getAreaTable()  
+  
+local area1 = areas['The Ways : 51']
+local area2 = areas['The Ways : 52']
+  
+-- display(area1, area2)
+
+
+local exits = table.union(getAreaExits(area1, true), getAreaExits(area2, true))
+
+-- display(exits)
+
+cecho('\n')
+
+for idx, exit in pairs(exits) do
+
+  
+  if (not exit.up) then
+    
+    local txt = ''
+    
+    for exitDir, rnum in pairs(exit) do
+      txt = txt .. ' ' .. exitDir .. ': ' .. rex.gsub(getRoomAreaName(getRoomArea(rnum)), [[: \d+$]], '')
+    end 
+    
+    txt = txt  ..'\n'
+    
+    if (matches[2] == '' or rex.find(txt, '(?i)' ..  matches[2])) then
+      cecho('room #')
+      cechoLink('&lt;green&gt;' .. tostring(idx) .. '&lt;reset&gt;', 'expandAlias("go ' .. tostring(idx) .. '")', '', true)
+      if (matches[2] ~= '') then
+        txt = rex.gsub(txt, '(?i)(' .. matches[2] .. ')', '&lt;yellow&gt;%1&lt;reset&gt;')
+      end
+      cecho(txt)
+    end
+    
+  end
+  
+end
+
+
+
+</script>
+			<command />
+			<packageName />
+			<regex>^lw ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map - load</name>
+			<script>-- "https://raw.githubusercontent.com/njs50/njs50-plev/master/njs50-map.dat"
+
+local URL = matches[2]
+
+if (not URL or URL == '') then
+  URL = "https://github.com/njs50/tfe-mapper/raw/master/njs50-comprehensive-map.dat"
+end
+
+uninstallPackage("generic_mapper")
+
+if not URL:ends("dat") then
+
+  cecho("&lt;red&gt;INSTALL: &lt;white&gt;map url doesn't appear to be valid, should be something like:\n") 
+  cecho("&lt;white&gt;https://raw.githubusercontent.com/njs50/njs50-plev/master/njs50-map.dat\n")
+
+else
+  
+  njs50.onNextEvent("sysDownloadDone", function (_, f)
+    
+    local loadOK = loadMap(f)
+    
+    if not loadOK then
+     cecho("&lt;red&gt;INSTALL: &lt;white&gt;Couldn't load - was the mapper open? :(\n")
+    else
+      cecho("&lt;green&gt;INSTALL: &lt;white&gt;Loaded fine!\n")
+    end
+    os.remove(f)
+  
+  end)
+  
+  cecho("&lt;green&gt;MAP INSTALL: &lt;white&gt;downloading - " .. URL .. "\n")
+
+  downloadFile(getMudletHomeDir().. "/njs50-map.dat", URL)
+end</script>
+			<command />
+			<packageName />
+			<regex>^map load ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map - set drink target</name>
+			<script>if (matches[2] and matches[2] ~= '') then
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; adding drink target in this room: ' .. matches[2] ..'\n')
+  setRoomUserData(gmcp.Room.Info.num, 'drink-target', matches[2])
+else
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; removing drink target in this room\n')
+  clearRoomUserDataItem(gmcp.Room.Info.num, 'drink-target')
+end</script>
+			<command />
+			<packageName />
+			<regex>^map drink ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map - set open command</name>
+			<script>local dir = tfe.consts.exitmap[matches[2]]
+
+if (matches[3] and matches[3] ~= '') then
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; added new command to open exit ' .. dir .. ' : ' .. matches[3] .. '\n')
+  setRoomUserData(gmcp.Room.Info.num, 'open-' .. dir, matches[3])
+else
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; removing command to open exit ' .. dir ..'\n')
+  clearRoomUserDataItem(gmcp.Room.Info.num, 'open-' .. dir)
+end
+
+</script>
+			<command />
+			<packageName />
+			<regex>^map open (n|e|s|w|u|d) ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>fix special exits (replace with open commands)</name>
+			<script>-- iterate over all rooms in code
+for id,name in pairs(getRooms()) do
+  local exits = getSpecialExits(id)
+  
+  if #table.keys(exits) &gt; 0 then
+    -- display(exits)
+    
+    for rnum, cmds in pairs(exits) do
+      -- display(rnum, cmds)
+      for idx, cmd in pairs(table.keys(cmds)) do
+        local newCmd, delay, queue, exit = rex.match(cmd, [[^(.+?)( &amp; wait \d+)?\s+&amp;\s+(\| ?|queue )?(north|east|south|west|up|down|n|e|s|w|u|d)\s*$]])
+        if newCmd then
+          -- display(rnum, cmd)
+          -- display('command:', result,x,y,z)
+          if tfe.consts.exitmap[exit] then exit = tfe.consts.exitmap[exit] end
+          -- 
+          display('removing old command in room #' .. tostring(id) .. ': ', cmd, 'adding new open metadata for ' .. exit .. ':', newCmd)
+          -- 
+          removeSpecialExit(id, cmd)
+          setRoomUserData(id, 'open-' .. exit, newCmd)
+          -- 
+          
+        end
+      end
+    end
+    
+  end
+  
+  
+end</script>
+			<command />
+			<packageName />
+			<regex>^map fix special exits$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map open door (dir)</name>
+			<script>tfe.openExit(tfe.consts.exitmap[matches[2]])</script>
+			<command />
+			<packageName />
+			<regex>^mod (n|e|s|w|u|d|north|east|south|west|up|down)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map find</name>
+			<script>
+tfe.mapFind(matches[3], 'gstat')</script>
+			<command />
+			<packageName />
+			<regex>^(mf|map find) (.+)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>map help</name>
+			<script>
+cecho('\n&lt;green&gt;MAP:&lt;white&gt; tfe-mapper commands\n\n') 
+
+cecho('&lt;white&gt;map load             &lt;reset&gt;- replace your current mudlet map file with my comprehensive map\n') 
+cecho('&lt;white&gt;map load &lt;url&gt;       &lt;reset&gt;- load a map file from someplace else on the internet\n\n') 
+
+cecho('&lt;white&gt;map exit &lt;dir&gt; &lt;cmd&gt; &lt;reset&gt;- set a special exit from this room in that direction\n') 
+cecho('&lt;white&gt;map exit cancel      &lt;reset&gt;- cancel adding a special exit (if changing rooms failed)\n') 
+
+cecho('&lt;white&gt;map open &lt;dir&gt; &lt;cmd&gt; &lt;reset&gt;- set the command to open the exit in that direction\n')
+cecho('&lt;white&gt;map reset            &lt;reset&gt;- completely clear the map for the current zone (are you sure?)\n\n')  
+
+cecho('&lt;white&gt;locations            &lt;reset&gt;- show all the room number aliases configured in tfe.locations\n') 
+
+cecho('&lt;white&gt;go &lt;place | rnum&gt;    &lt;reset&gt;- go to this place, one room at a time\n') 
+cecho('&lt;white&gt;tgo &lt;place | rnum&gt;   &lt;reset&gt;- go to this place, using speedwalks\n') 
+cecho('&lt;white&gt;stop                 &lt;reset&gt;- stop movement\n')
+cecho('&lt;white&gt;pause                &lt;reset&gt;- pause movement \n')
+cecho('&lt;white&gt;resume               &lt;reset&gt;- resume movement\n')
+cecho('&lt;white&gt;path &lt;place | rnum&gt;  &lt;reset&gt;- display a speedwalk to get to this place\n')
+cecho('&lt;white&gt;path &lt;place&gt; &lt;place&gt; &lt;reset&gt;- display a speedwalk to get from one place to another\n\n')
+
+cecho('&lt;green&gt;njs50pm:&lt;white&gt; njs50pm update tfe-mapper &lt;reset&gt;- update this package!\n') 
+cecho('&lt;green&gt;MAP:&lt;white&gt; for more info see: https://github.com/njs50/tfe-mapper\n')
+</script>
+			<command />
+			<packageName />
+			<regex>^map help$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>enable autoscan</name>
+			<script>-- local options = {'Enable.Autoscan','','Autoscan.Far.Scans','Scan.Far.Scans',
+                 -- 'Autoscan.Towns','Autoscan.Current.Room', 'Ignore.Wordwrap',
+                 -- 'Scan.When.Looking','Autoscan.Shows.Empty'}
+
+local desiredState = matches[2]
+
+
+
+-- 
+-- (*) Enable.Autoscan
+-- ( ) Autoscan.Far.Scans
+-- ( ) Scan.Far.Scans
+-- ( ) Autoscan.Towns
+-- ( ) Autoscan.Current.Room
+-- ( ) Ignore.Wordwrap
+-- ( ) Scan.When.Looking
+-- ( ) Autoscan.Shows.Empty
+
+                                -- Scan Options 
+-- Scan delimiter: ',' (set with 'scan -d')
+
+local optionParser
+
+tempRegexTrigger([[^\s+Scan Options]], function()
+  cecho('\n&lt;green&gt;&lt;-- start checking options')
+  
+  optionParser = tempRegexTrigger([[^\(([ *])\)\s+(.*)$]], function() -- \([ *]\)\s+
+    cecho(' &lt;green&gt;&lt;-- option:&lt;white&gt; ' .. matches[3])
+    
+    if desiredState == 'true' and matches[2] ~= '*' then
+      send('scan -o ' .. matches[3])
+    end
+    
+    if desiredState == 'false' and matches[2] ~= ' ' then
+      send('scan -o ' .. matches[3])
+    end
+    
+  end)
+  
+end, 1)
+
+
+tempRegexTrigger([[^Scan delimiter:]], function()
+  cecho('\n&lt;green&gt;&lt;-- stop checking options')
+  killTrigger(optionParser)
+end, 1)
+
+
+
+send('scan -o')</script>
+			<command />
+			<packageName />
+			<regex>^autoscan (true|false)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>locations</name>
+			<script>
+local locStr = ''
+local idx = 0
+
+
+cecho('&lt;green&gt;MAP&lt;white&gt;: locations I know about..\n')
+
+for loc, rnum in spairs(tfe.locations) do
+  
+  idx = idx + 1
+  
+  if (idx % 10 == 1 and locStr ~= '') then
+    cecho('     ' .. locStr .. '\n')
+    locStr = ''
+  end
+  
+  if (idx % 10 ~= 1) then locStr = locStr .. ' ' end
+  
+  locStr = locStr .. loc
+
+end
+
+if (locStr ~= '') then
+  cecho('     ' .. locStr .. '\n')
+end
+</script>
+			<command />
+			<packageName />
+			<regex>^locations$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>list rooms in area</name>
+			<script>njs50.displayRooms()</script>
+			<command />
+			<packageName />
+			<regex>^(rlist|roomlist)$</regex>
+		</Alias>
+	</AliasPackage>
+	<ActionPackage />
+	<ScriptPackage>
+		<Script isActive="yes" isFolder="no">
+			<name>configuration</name>
+			<packageName />
+			<script>njs50 = njs50 or {}
+
+njs50.config = {
+  rewrite_scan = false, -- make scan results clickable (move or attack)
+}
+
+
+
+
+njs50.update_mapper = function ()
+
+  local URL = "https://raw.githubusercontent.com/njs50/tfe-mapper/master/tfe-mapper.xml"
+  
+  njs50.onNextEvent("sysDownloadDone", function (_, f)
+    if not f:find("tfe-mapper", 1, true) then 
+      return 
+    end
+    uninstallPackage("tfe-mapper")
+    installPackage(f)
+    os.remove(f)
+    cecho("&lt;lime_green&gt;Package installed!\n") 
+  end)
+  
+  downloadFile(getMudletHomeDir()..(URL:ends("xml") and "/tfe-mapper.xml" or "/tfe-mapper.zip"), URL)
+
+end
+
+njs50.install_color_theme = function ()
+
+
+
+end</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>njs50 common</name>
+			<packageName />
+			<script>njs50 = njs50 or {}
+
+njs50.tempTimedNextEvent = function(timeout, evt, callback, failCallback)
+  local eventWatcher, timer
+  
+  eventWatcher = njs50.onNextEvent(evt, function(evt, args)
+  		-- cecho('\n&lt;green&gt;EVENT: time limited next event happened: ' .. evt .. '\n')  
+    if (timer) then killTimer(timer) end
+  	callback(evt, args)
+  end)
+  
+  timer = tempTimer(timeout, function()
+    -- cecho('\n&lt;orange&gt;EVENT: event didn\'t occur in time: ' .. evt .. '\n')
+    eventWatcher()
+    if (failCallback) then
+      failCallback(evt, args)
+    end
+  end) -- , 'event: ' .. evt .. ' (' .. tostring(timeout) .. 's)'
+  
+  -- destoy this temp timed event watcher
+  return function()
+    if (timer) then killTimer(timer) end
+    eventWatcher()
+  end
+  
+end
+
+
+njs50.tempTimedNextEventAnyway = function(timeout, evt, callback)
+  return njs50.tempTimedNextEvent(timeout, evt, callback, callback)
+end
+
+njs50.onNextEvent = function (evt, callback)
+
+	if not evt then
+		cecho('\n\n&lt;red&gt;Next Event: &lt;white&gt;no event defined!!!\n\n')
+		error()
+	end
+
+
+	local handlerId = nil
+	local cb2 = callback
+
+	local cb = function (evt, ...)
+		killAnonymousEventHandler(handlerId)
+		cb2(evt, unpack(arg))
+	end
+
+	handlerId = registerAnonymousEventHandler(evt, cb, true)
+
+	-- cecho('\n&lt;green&gt;registering self destruct event: ' .. evt .. ' : ' .. tostring(handlerId) .. '\n')
+
+	return function ()
+		-- cecho('\n&lt;orange&gt;destructing handler: ' .. evt .. ' : ' .. tostring(handlerId) .. '\n')
+		killAnonymousEventHandler(handlerId)
+	end
+
+end
+
+njs50.tablelength = function(T)
+  local count = 0
+  for _ in pairs(T) do count = count + 1 end
+  return count
+end
+
+
+njs50.timedTempTrigger = function (timeout, maxTriggerCount, pattern, callback, failcallback)
+
+	local ofcb = failcallback
+	local ocb = callback
+  
+  local fcb
+  local cb
+  local tempTimerId
+  local triggerId
+  maxTriggerCount = maxTriggerCount or 1
+  
+  local count = 0
+
+	cb = function ()
+		fcb = nil;
+    ofcb = nil;
+    count = count + 1
+    if (count &gt;= maxTriggerCount) then
+      killTrigger(triggerId)
+    end
+    -- echo('\n -- killing temp timed trigger timer\n')    
+    if (tempTimerId) then killTimer(tempTimerId) end
+		if (ocb) then
+			ocb()
+		end
+	end
+  
+  fcb = function()
+    cb = nil;
+    ocb = nil;
+    killTrigger(triggerId)
+    if (ofcb) then
+      ofcb()
+    end
+  end
+
+	triggerId = tempRegexTrigger(pattern, cb, maxTriggerCount)
+
+	tempTimerId = tempTimer(timeout, function ()
+		-- echo('\n -- killing temp timed trigger\n')
+	   fcb()
+	end)
+
+	return {triggerId = triggerId, timerId = tempTimerId}
+
+end
+
+njs50.timedTempTriggerAnyway = function(timeout, maxTriggerCount, pattern, callback)
+  njs50.timedTempTrigger(timeout, maxTriggerCount, pattern, callback, callback)
+end
+
+njs50.killTimedTempTrigger = function (oTT)
+  if (oTT.timerId) then killTimer(oTT.timerId) end
+  killTrigger(oTT.triggerId)
+end
+
+
+common = common or {}
+
+common.timedTempTrigger = njs50.timedTempTrigger
+timedTempTrigger = njs50.timedTempTrigger
+
+common.killTimedTempTrigger = njs50.killTimedTempTrigger
+killTimedTempTrigger = njs50.killTimedTempTrigger
+
+
+tempTimedNextEvent = njs50.tempTimedNextEvent
+common.tempTimedNextEvent = njs50.tempTimedNextEvent</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>formatters</name>
+			<packageName />
+			<script>common = common or {}
+
+-- can add items to override from shortening if they mess up gear swapping
+common.itemShortenOverride = common.itemShortenOverride or {}
+common.itemShortenOverride['darkgem'] = 'darkgem'
+common.itemShortenOverride['darklight'] = 'darklight'
+common.itemShortenOverride['shadowbox'] = 'shadowbox'
+
+common.itemShortenOverride['woolen.socks'] = 'woolen.sock'
+common.itemShortenOverride['woolen socks'] = 'woolen.sock'
+
+-- bung keywords on item
+common.itemShortenOverride['orange headband'] = 'orange.strip'
+common.itemShortenOverride['emerald bracelet'] = 'emerald.bracelet'
+common.itemShortenOverride['orange.headband'] = 'orange.strip'
+common.itemShortenOverride['emerald.bracelet'] = 'emerald.bracelet'
+
+common.itemShortenOverride['steel-tipped boots'] = 'steel-tip.boots'
+common.itemShortenOverride['steel-tipped.boots'] = 'steel-tip.boots'
+
+common.itemShortenOverride["flowing.silver.greatsword.Unbending"] = 'flow.silv.grea'
+common.itemShortenOverride["flowing.silver.shortspear.Hand.the"] = 'flow.silv.shor'
+
+
+common.consoleMessage = function(console, message, statusColor, excludeAll)
+
+  local color = 'green'
+
+  if (statusColor) then
+    color = statusColor
+  end
+  
+  if (common.chatConsole) then
+    common.chatConsole:cecho(console, '&lt;' .. color .. '&gt;' .. getTime(true, "hh:mm:ss") .. ': &lt;white&gt;' .. message .. "\n", excludeAll)
+  end
+  
+end
+
+
+common.escape = function (str)
+  str = rex.gsub(str, [[\\]], '\\\\')
+  return str
+end
+
+
+common.formatElapsedTime = function (time)
+
+	local ts = '';
+
+	if (not time) then
+		return '0 seconds'
+	end
+
+	local hrs = 0
+	local mins = 0
+	local secs = 0
+
+	if (time &gt;= 3600) then
+		hrs = math.floor(time / 3600)
+		time = time - (hrs * 3600)
+		ts = ts .. tostring(hrs) .. ' hrs, '
+	end
+
+
+	if (time &gt;= 60 or hrs &gt; 0) then
+		mins = math.floor(time / 60)
+		time = time - (mins * 60)
+		ts = ts .. tostring(mins) .. ' mins, '
+	end
+
+	secs = math.floor(time)
+	time = time - secs
+	ts = ts .. tostring(secs) .. ' seconds'
+
+
+	return ts
+
+end
+
+common.getNumber = function (text)
+
+	local wordToNumberData = {
+    	a = 1,
+    	an = 1,
+    	the = 1,
+		one = 1,
+		two = 2,
+		three = 3,
+		four = 4,
+		five = 5,
+		six = 6,
+		seven = 7,
+		eight = 8,
+		nine = 9,
+		ten = 10,
+		eleven = 11,
+		twelve = 12,
+		thrirteen = 13,
+		fourteen = 14,
+    fifteen = 15,
+    twenty = 20,
+    thirty = 30,
+    forty = 40,
+    fifty = 50,
+	}
+
+	local numTxt = rex.match(text, [[^\S+]])
+
+	if (numTxt) then
+		return wordToNumberData[string.lower(numTxt)] or 1
+	else
+		-- either it's more than 14 or a proper noun. i.e Stinky (your mount
+		return 1
+	end
+
+end
+
+common.cleanGmcpTarget = function(string)
+  return common.dotCase(common.toMurderString(rex.gsub(rex.gsub(string, [[^\d+\.]], ''), [[\.]], ' ')))
+end
+
+common.dotCase = function(string)
+
+	if (not string or string == '') then
+		return ''
+	end
+	return rex.gsub(string, [[(?i)\b(the|or|an|a|of|with|and|A|An|The) ]], ''):gsub(' ', '.')
+end
+
+
+common.itemSanitize = function(string, keepEnchant)
+
+  if (not string or string == '') then
+    return ''
+  end
+
+  string = rex.gsub(string, [[(thanatotic,? |sanctified |desecrated |\+chaotic\+,? |\+lawful\+,? |\+evil\+,? |\+good\+,? |acid-dripping,? |divinely flamed,? |empty,? |spiteful,? |jinxing,? |flaming,? |labeled )]], '')
+
+  if (keepEnchant ~= true) then
+    string = rex.gsub(string, [[(\s\+\d)]], '')  
+  end
+
+  if (not rex.find(string, [[frost-covered ring]])) then
+    string = rex.gsub(string, [[frost-covered,? ]], '')
+  end
+  
+  -- only use first word in item of 'stupid name'  
+  string = rex.gsub(string, [['(.+?)\s(.+)']], '%1')
+
+  string = rex.gsub(string,[[^an enchanted,? ([aeiou])]], 'an %1')
+  string = rex.gsub(string,[[^an enchanted,?]], 'a')
+  string = rex.gsub(string,[[of enchanted]], 'of')
+  string = rex.gsub(string,[[^enchanted,? ]], '')
+    
+  return string
+
+end
+
+common.itemEquipListFormat = function(item)
+  item = common.itemSanitize(item)
+  
+  item = rex.gsub(item, [[^(a|an|a pair of|a set of) ]], '')
+  
+  return item
+end
+
+
+
+common.itemShorten = function(item, keepEnchant)
+
+  item, itemEnchant = rex.match(item, [[^(.+?)( \+\d)?$]])
+
+  item = catalog.common.dotCase(catalog.common.itemSanitize(item, keepEnchant))
+  
+  
+  if (catalog.common.itemShortenOverride[item]) then
+    item = catalog.common.itemShortenOverride[item]    
+  else  
+    item = rex.gsub(	rex.gsub(item,"'(.*)'",'%1'),
+      	'([^.][^.][^.][^.]?)[^.]+',
+      	'%1'
+    )
+  end
+  
+  if keepEnchant and itemEnchant then
+    item = item .. rex.gsub(itemEnchant, ' ', '.')
+  end
+
+  return item
+
+end
+
+common.commaCase = function (str)
+    local extra = #str%3
+    if string.sub(str,1,1) == "-" then
+        if extra == 0 then
+            extra = 3
+        else
+            extra = extra + 1
+        end
+    end
+    local result = ""
+    if extra &gt; 0 then
+        result = string.sub(str,1,extra)
+        str = string.sub(str,extra+1)
+    end
+    for w in string.gmatch(str,"%d%d%d") do
+        result = result .. "," .. w
+    end
+    return result:gsub([[^,?]],'')
+end
+
+
+common.toMurderString = function (victim)
+
+	-- remove any articles etc
+	victim = rex.gsub(victim, [[(?i)\b(a|an|the|\+chaotic\+|\+lawful\+|\+evil\+|\+good\+|good|evil|The|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen)\s]], '')
+
+	-- turn elves back into elf, dwarves etc
+	victim = rex.gsub(victim, [[ves$]], 'f')
+
+	-- turn women back to womans, guardsmen to guardsman
+	victim = rex.gsub(victim, [[(\w+)men\b]], '%1man')
+	-- drop i from end (plurals like homonculi
+  
+  local ignoreTerminalI = {
+    yeti = true,
+    targi = true,
+    ['mammoth yeti'] = true,
+  }
+  
+  local specialCases = {
+    mice = 'mouse',
+    ["ash-spirits"] = 'ash spirits',
+    ["greater faeries"] = 'greater faerie',
+    ["bulettes"] = 'bulette',    
+    ["swarm of tsetse flies"] = 'swarm tsetse flie',    
+  }
+  
+  -- display(victim)
+
+  if (specialCases[victim]) then
+    victim = specialCases[victim]
+  end
+
+  if (not ignoreTerminalI[victim]) then
+	 victim = rex.gsub(victim, [[i( |$)]], '%1')
+  end
+
+	 -- turn mercenaries back into mercanary
+	victim = rex.gsub(victim, [[ies$]], 'y')
+  
+  -- but keep zomby zombies
+  victim = rex.gsub(victim, [[zomby$]], 'zombie')
+
+	-- dump any s's or es's on the end of a plural
+	-- west : two greater cyclopses, vs a greater cyclops
+	-- drudges should go to drudge tho...
+	if (rex.find(victim, [[ses( |$)]])) then
+		victim = rex.gsub(victim, [[ses( |$)]], 's%1')
+	elseif (rex.find(victim, [[es( |$)]])) then
+    -- cockroaches -&gt; cockroach
+		victim = rex.gsub(victim, [[es( |$)]], '%1')
+	else
+		victim = rex.gsub(victim, [[('?s'?)( |$)]], '%2')
+	end
+
+	-- dump any random commas
+	victim = rex.gsub(victim, [[,]], '')
+
+	-- kill any parts less than 3 charaters
+	victim = rex.gsub(victim, [[(^|\.|\s)\S\S?(\s|\.|$)]], '%1%2')
+
+	-- kill any extra whitepsace or multiple .'s
+	victim = rex.gsub(victim, [[(\s\s+|\.\.+)]], ' ')
+	victim = string.trim(victim)
+
+	-- kill any . at start or end.
+	victim = rex.gsub(victim, [[^\.]], '')
+	victim = rex.gsub(victim, [[\.$]], '')
+
+	return victim
+
+end
+
+common.tableToString = function (table)
+  
+  local list = ''
+  
+  for idx, val in ipairs(table) do
+  
+    if type(val) == 'number' then val = tostring(val) end
+    
+    list = list .. val .. ', '
+  
+  end
+  
+  list = list:gsub(', $', '')
+  
+  return list
+  
+end
+
+common.tableIndexesToString = function(t)
+
+  local list = ''
+  for idx, val in pairs(table.keys(t)) do
+    if (idx ~= 1) then
+      list = list .. ', '
+    end
+    if type(val) == 'number' then val = tostring(val) end
+    list = list .. val
+  end
+  return list
+end
+
+common.getAreaName = function(roomId)
+  local areaId = getRoomArea(roomId)
+  local areaName = getRoomAreaName(areaId)
+  
+  return rex.gsub(areaName, [[\s+:\s+\d+$]], '')
+  
+end
+
+
+-- copy these to njs50 scope for weird historical reasons
+njs50.formatElapsedTime = common.formatElapsedTime
+njs50.getNumber = common.getNumber
+njs50.cleanGmcpTarget = common.cleanGmcpTarget
+njs50.dotCase = common.dotCase
+njs50.itemSanitize = common.itemSanitize
+njs50.commaCase = common.commaCase
+njs50.toMurderString = common.toMurderString
+njs50.itemShorten = common.itemShorten
+njs50.tableToString = common.tableToString
+</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>scanner</name>
+			<packageName />
+			<script>-------------------------------------------------
+--         Put your Lua functions here.        --
+--                                             --
+-- Note that you can also use external Scripts --
+-------------------------------------------------
+
+-- `echo      [Here] : a mountain bear, two mountain bear cubs, Bede, Ghosty, Brazden,
+-- `echo              Ghosty
+
+njs50.scanner = njs50.scanner or {}
+njs50 = njs50 or {}
+
+njs50.scanner.events = {		
+	SCAN_PROCESSED = 'SCANNER:rooms_scanned',
+  PROMPT = 'SCANNER:prompt seen',
+}
+
+njs50.scanner.resetExits = function ()
+	njs50.scanner.exits = {}
+end
+
+
+njs50.scanner.resetScanner = function ()
+	njs50.scanner.scan_in_progress = false
+  njs50.scanner.currentDirection = nil
+	if (njs50.scanner.cancel_scan_in_progress) then
+		njs50.scanner.cancel_scan_in_progress()
+		njs50.scanner.cancel_scan_in_progress = nil
+	end
+	njs50.scanner.resetExits()
+end
+
+njs50.scanner.endScan = function()
+  if (njs50.scanner.cancel_scan_in_progress) then
+    njs50.scanner.cancel_scan_in_progress()
+    njs50.scanner.cancel_scan_in_progress = nil
+  end
+  njs50.scanner.currentDirection = nil
+  njs50.scanner.scan_in_progress = false
+
+  -- cecho(' &lt;- &lt;green&gt;SCANNER: &lt;white&gt;scan ended\n')	
+  raiseEvent(njs50.scanner.events.SCAN_PROCESSED, njs50.scanner.exits)
+
+end
+
+njs50.scanner.scannedLine = function (direction, mobs)  		
+	
+	if (not njs50.scanner.scan_in_progress) then
+    -- cecho('\n&lt;green&gt;SCANNER: &lt;white&gt;scan started\n')
+		njs50.scanner.resetExits();			
+		njs50.scanner.scan_in_progress = true
+    -- in case for some reason there isn't a blank line after the scan
+    -- stop scanning ont the next prompt
+		njs50.scanner.cancel_scan_in_progress = njs50.onNextEvent(njs50.scanner.events.PROMPT, njs50.scanner.endScan)
+	end
+  
+	
+  if (direction ~= "") then
+    njs50.scanner.processingExit = direction
+    
+    -- sometimes two scans come in back to back with no gap. gotta reset direction whenever it is present
+    -- i.e :
+    -- south: yeti
+    -- south: yeti
+    -- should not = 2 yetis south
+    njs50.scanner.exits[direction] = {}
+    
+    if (direction ~= '[Here]') then
+      if njs50.config.rewrite_scan then
+        selectString(direction,1)
+        setUnderline(true)
+        setLink([[send("]]..direction..[[")]], 'move ' .. direction)
+        resetFormat()
+      end
+    end
+    
+  else
+     direction = njs50.scanner.processingExit
+  end
+  
+  njs50.scanner.exits[direction] = njs50.scanner.exits[direction] or {}
+  
+  -- convert strings to individual mobs
+  -- nb: commas make this difficult as they might be in a mob name and not a seperator
+  -- i.e. 
+  
+  
+  local nubs = {}
+  for s, c, r in rex.split(mobs, [[, (?=a |an |the |[A-Z]|two |three |four |five |six |seven |eight |nine |ten |eleven |twelve | thirteen |fourteen |fifteen )]]) do
+    table.insert(nubs, s)
+  end
+  
+  -- display(nubs)
+  
+  -- convert mobs to attack strings with counts
+  for idx, mobString in pairs(nubs) do
+    
+    local mobRecord
+    local ks = njs50.dotCase(njs50.toMurderString(mobString))
+    local count = njs50.getNumber(mobString)
+    
+    -- check to see if there is already a mob with this name
+    -- i.e east: a Medienne Knight, a Medienne Knight
+    for idx, record in pairs(njs50.scanner.exits[direction]) do
+      if (record.killString == ks) then
+        mobRecord = record
+        break;
+      end
+    end
+    
+    if (mobRecord == nil) then 
+      mobRecord = { 
+        raw = mobString, 
+        killString = ks, 
+        count = count 
+      }
+      table.insert(njs50.scanner.exits[direction], mobRecord)
+    else
+      mobRecord.count = mobRecord.count + count
+    end
+      
+    if njs50.config.rewrite_scan then  
+      selectString(mobRecord.raw,1)
+      setUnderline(true)
+      setLink([[send("]].. direction ..[[ &amp; k ]] .. mobRecord.killString .. [[")]], direction .. ' &amp; k ' .. mobRecord.killString)
+      -- replace('xxxx')
+      resetFormat()
+    end
+    
+  end
+	
+end
+
+
+njs50.findPlayer = function(name, cb)
+  common.onNextEvent(njs50.scanner.events.SCAN_PROCESSED, function()
+    for exit, contents in pairs(njs50.scanner.exits) do
+      for idx, unit in pairs(contents) do
+        if unit.raw == name then
+          return cb(exit)
+        end
+      end
+    end
+    cb()
+  end)
+  murder.scan('looking for lost player')
+end
+
+murder = murder or {}
+murder.scan = function(reason, cb)
+
+  if (reason) then
+    common.log('\n&lt;green&gt;SCANNER:&lt;white&gt; scan because: ' .. reason .. '\n')
+  end
+
+  if (not murder.scanPending) then
+    
+    murder.scanPending = true
+    
+    local blindTrig, scanWatcher
+    
+    local scanTimer = tempTimer(10, function()
+      murder.scanPending = nil
+      killTrigger(blindTrig)
+      scanWatcher()
+      if autoconnect.connected then
+        common.log('\n&lt;orange&gt;SCANNER:&lt;white&gt; no scan within 10 seconds, trying again\n')
+        murder.scan('retry scan due to timeout')
+      else
+        common.log('\n&lt;red&gt;SCANNER:&lt;white&gt; not connected so skipping scan\n')
+      end
+    end)
+    
+    -- 
+    blindTrig = tempBeginOfLineTrigger([[You can't see a thing!]], function()      
+      if (scanTimer) then killTimer(scanTimer) end
+      scanWatcher()     
+      tempTimer(10, function()
+        murder.scanPending = nil
+        murder.scan('previous scan failed due to blind')
+      end)
+      send('gstat ' .. player.name .. ' has unresolved blindness')
+    end, 1)
+    
+    
+    scanWatcher = common.onNextEvent(njs50.scanner.events.SCAN_PROCESSED, function()
+      murder.scanPending = nil
+      if (scanTimer) then killTimer(scanTimer) end
+      killTrigger(blindTrig)
+      if (cb) then
+        cb()
+      end
+    end)
+    
+    send('queue scan')
+    
+    
+  else
+  
+    common.log('\n&lt;yellow&gt;SCANNER:&lt;white&gt; skipped scan due to pending scan...(' .. reason .. ')\n')
+    
+  end
+  
+
+end</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>tfe mapper</name>
+			<packageName />
+			<script>-------------------------------------------------
+--         Put your Lua functions here.        --
+--                                             --
+-- Note that you can also use external scripts --
+-------------------------------------------------
+mudlet = mudlet or {};
+mudlet.mapper_script = true
+
+
+
+tfe = tfe or {}
+
+
+-- delete janky old maps
+tfe.cleanMaps = function()
+  
+  local deleteMaps = {}
+  
+  local areas = getAreaTable()
+  
+  -- display( areas )
+  
+  for area, id in pairs(areas) do
+
+    if not rex.match(area, [[^.* : \d+$]]) then    
+      display('deleting ' .. area)
+      deleteArea(id)    
+    end
+  end
+
+end
+
+
+tfe.events = {
+  ROOM_CHANGED = 'tfe mapper: room found',
+  ROOM_CHANGE_PENDING = 'tfe mapper: move pending',
+  WALK_COMPLETE = 'tfe mapper: speedwalk complete',
+  EXIT_BLOCKED = 'tfe mapper: exit blocked by mob',
+}
+
+
+tfe.druidWayAreas = {
+  ['The Ways : 51'] = true,
+  ['The Ways : 52'] = true,
+}
+
+-- duplicate rooms from one zone to another zone
+-- useful when there are 
+tfe.shadowZones = {
+  -- spooky isle
+  ['Isle of Broken Promises : 73'] = 'n101 : 78',
+  ['n101 : 78'] = 'Isle of Broken Promises : 73',
+  ['Northern Sea Trail : 120'] = 'Medienne Forest : 5',  
+  ['Medienne Forest : 5'] = 'Northern Sea Trail : 120',
+}
+  
+
+
+-- bleh 1-16 and 257-272 are reserved
+tfe.environment = {
+  
+  Air = 41,
+  ["Magical Cloud"] = 59,
+  
+  
+  ["Dark Bamboo"] = 47, 
+  ["Bamboo Forest"] = 42,
+  Forest = 53,
+  Jungle = 56,
+  Rainforest = 25,
+  Tree = 34, 
+   
+  Trail = 33, 
+  ["Jungle Trail"] = 57,
+  ["Forest Path"] = 54,
+  
+  Dirt = 49,
+
+  ["Compost Zone"] = 46,
+  
+  Dump = 51,
+  Pudding = 24,
+  
+  Path = 23,
+  Road = 27,
+  ["Town Street"] = 32,
+    
+  Tundra = 35, 
+  Field = 52,
+  
+  Lake = 60,
+  Beach = 43,
+  Desert = 48,
+  ["White Sand"] = 39,
+   
+  Cave = 45,
+ 
+  Lava = 58,
+  
+  Hills = 55,
+
+  Bridge = 44,
+  Mountain = 20,
+  Rock = 61,
+  
+  Underwater = 36,
+  Water = 38,
+  River = 26,
+  ["Ocean Water"] = 22,
+
+  Swamp = 31,
+  
+  Shallows = 29,
+  ["Dry Riverbed"] = 50,
+  
+  Shipboard = 30,
+  WoodenBoards = 40,
+  
+  Room = 28,
+  
+  Nondescript = 21,
+  Void = 37,
+  
+  
+  
+  -- added by njs50 while wandering...
+  ["Sandy Cavern"] = 100,
+  
+  -- entirely fictitious (for rooms duplicated in another map)
+  ["Shadow Room"] = 201,
+  
+  -- 
+  ["uninspected"] = 202
+  
+}
+
+
+-- to see color optiosn
+-- lua showColors(3)
+
+tfe.environmentColor = {
+  
+  Air = 'deep_sky_blue',
+  ["Magical Cloud"] = 'light_sky_blue',
+  
+  
+  ["Dark Bamboo"] = 'dark_green', 
+  
+  ["Bamboo Forest"] = 'forest_green',
+  Forest = 'forest_green',
+  Jungle = 'forest_green',
+  Rainforest = 'forest_green',
+  Tree = 'lime_green',
+   
+  Path = 'khaki', 
+  Trail = 'khaki', 
+  ["Jungle Trail"] = 'khaki', 
+  ["Forest Path"] = 'khaki', 
+  
+  Dirt = 'saddle_brown', 
+
+  ["Compost Zone"] = 'saddle_brown',
+  
+  Dump ='saddle_brown',
+  Pudding = 'saddle_brown',
+  
+  
+  
+  Road = 'dark_khaki',
+  ["Town Street"] = 'dark_khaki',
+    
+  Tundra = 'wheat', 
+  Field = 'wheat', 
+  
+  Beach = 'navajo_white',
+  Desert = 'navajo_white',
+  ["White Sand"] = 'navajo_white',
+   
+  Cave = 'dark_slate_gray',
+ 
+  Lava = 'orange_red',
+  
+  Hills = 'dark_olive_green',
+
+  Bridge = 'dark_olive_green',
+  Mountain = 'dark_olive_green',
+  
+  Rock = 'dark_slate_gray',
+  
+  Underwater = 'navy_blue',
+  
+  Lake = 'dodger_blue',
+  Water = 'dodger_blue',
+  River = 'dodger_blue',
+  ["Ocean Water"] = 'dodger_blue',
+
+  Swamp = 'light_sky_blue',
+  
+  Shallows = 'light_sky_blue',
+  
+  ["Dry Riverbed"] = 'light_steel_blue',
+  
+  Shipboard = 'dark_khaki',
+  WoodenBoards = 'dark_khaki',
+  
+  Room = 'beige',
+  
+  Nondescript = 'beige',
+  
+  Void = 'dark_slate_grey',
+
+  -- added by njs50 (missing from terrain data)
+  ["Sandy Cavern"] = 'navajo_white',
+  
+  ["Shadow Room"] = 'slate_grey',
+  
+  ["uninspected"] = 'violet_red',
+  
+}
+
+for terrain, color in pairs(tfe.environmentColor) do
+  local r, g, b = unpack(color_table[color])
+  setCustomEnvColor(tfe.environment[terrain], r, g, b, 255)
+end
+
+
+
+
+local shortSpeedWalkTimerId
+
+tfe.startShortSpeedWalkTimer = function ()
+
+	-- clear any existing timer
+	tfe.clearShortSpeedWalkTimer()
+
+
+	-- give us 5 seconds to move...
+	shortSpeedWalkTimerId = tempTimer(5, function ()
+		shortSpeedWalkTimerId = nil
+		cecho('\n&lt;yellow&gt;TFE MAP: &lt;white&gt;5 seconds without room change!!! - updating path...\n')
+    tempTimer(2, function()
+      cecho('\n&lt;yellow&gt;TFE MAP: &lt;white&gt;reroute from short speed walk timeout\n')
+  		  tfe.rerouteSpeedwalk()
+      tfe.speedWalkStep()
+    end)
+	end)
+
+
+end
+
+tfe.clearShortSpeedWalkTimer = function()
+	if (shortSpeedWalkTimerId) then
+		killTimer(shortSpeedWalkTimerId)
+	end
+	shortSpeedWalkTimerId = nil
+end
+
+tfe.speedwalkPause = function ()
+  if (tfe.speedwalking) then
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;speedwalking paused\n')
+    if tfe.speedwalking.walkType == 'turbo' then 
+      tfe.turboWalkPause()
+    else
+      tfe.speedwalking.paused = true
+    end
+  else
+   cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;not currently speedwalking\n')
+  end
+end
+
+
+tfe.speedwalkResume = function ()
+  if (tfe.speedwalking) then
+    
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;speedwalking resumed\n')
+    
+    if tfe.speedwalking.walkType == 'turbo' then 
+      tfe.turboWalkResume()
+    else
+      tfe.speedwalking.paused = nil
+      tfe.speedWalkStep()
+    end
+    
+  else
+     cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;not currently speedwalking\n')
+  end
+end
+
+tfe.speedwalkStop = function ()
+ 
+ if (tfe.speedwalking) then
+    
+    if tfe.speedwalking.walkType == 'turbo' then
+      tfe.turboSpeedwalkStop()
+    else
+ 
+      tfe.clearShortSpeedWalkTimer()
+      -- clear any room change watcher if it exists
+      if (tfe.speedwalking.roomChangeWatcher) then
+        tfe.speedwalking.roomChangeWatcher()
+        tfe.speedwalking.roomChangeWatcher = nil
+      end
+
+    end
+    tfe.speedwalking = nil
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;speedwalking stopped\n')
+  else
+     cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;not currently speedwalking\n')
+  end
+  
+end
+
+
+tfe.isDoor = function(roomId, direction)
+  
+  direction = tfe.consts.exitmap[direction]
+  
+  -- if it's not a standard exit dir it can't have a door open cmd
+  if (not direction) then
+    return false, ''
+  end
+  
+  local openCommand = getRoomUserData(roomId, 'open-' .. direction)
+  
+  return openCommand ~= '', openCommand
+  
+end
+
+tfe.isExitClosed = function(direction)
+  
+  if(direction and direction ~= '') then
+  
+    direction = tfe.consts.exitmap[direction]
+    
+    local isSpecialExit = false
+    local exits = getRoomExits(tfe.roomInfo.num)
+    local specialExits = getSpecialExits(tfe.roomInfo.num)
+    
+    if (exits and specialExits) then
+      local targetRoom = exits[direction]
+      if (targetRoom and specialExits[targetRoom]) then
+        isSpecialExit = true
+      end
+    end
+    
+    -- if it's not a special exit it must be linked in our map
+    if (not isSpecialExit and tfe.consts.standardExits[direction] and not exits[direction]) then
+      return false
+    end
+  
+    -- if it's a standard exit it needs to have exit info
+    -- if it's a special exit we will assume it is open/passable with that command
+    if tfe.consts.standardExits[direction] and not isSpecialExit then
+      local exitInfo = gmcp.Room.Info.exit_info[direction]
+      if not exitInfo or table.contains(exitInfo.flags, 'closed') then
+        return true
+      end
+    end   
+     
+  end
+  
+  return false
+        
+end
+
+tfe.openExit = function(direction, callback)
+
+  direction = tfe.consts.exitmap[direction]
+
+  -- kill any existing room change watcher etc (if this is a retry perhaps)
+  if (pendingExitOpen) then
+    roomChangeWatcher()
+    roomChangeWatcher = nil
+    pendingExitOpen = nil        
+  end
+  
+  if not tfe.isExitClosed(direction) then
+  
+    cecho('\n&lt;green&gt;mapper&lt;white&gt;: ' .. direction .. ' is already open\n')
+    if (callback) then
+      callback()
+    end
+    
+  else
+    
+    
+    if (callback) then
+    
+      local pendingExitOpen
+      
+      cecho('\n&lt;green&gt;mapper&lt;white&gt;: waiting for ' .. direction .. ' to open\n')
+      
+      local roomChangeWatcher = njs50.onNextEvent(tfe.events.ROOM_CHANGED, function() 
+        pendingExitOpen()
+        pendingExitOpen = nil
+        cecho('\n&lt;orange&gt;mapper&lt;white&gt;: room changed before exit opened!\n')
+      end)
+      
+      pendingExitOpen = njs50.onNextEvent(njs50.gmcp.events.ROOM_EXITS_UPDATE, function() 
+        -- step completed. do next step    
+        roomChangeWatcher()
+        roomChangeWatcher = nil
+        pendingExitOpen = nil
+        callback()
+      end)    
+          
+    end  
+  
+    local exitInfo = gmcp.Room.Info.exit_info[direction]
+    local openCommand = getRoomUserData(gmcp.Room.Info.num, 'open-' .. direction)
+    
+    local isMounted = table.contains(gmcp.Char.Status.flags,"mounted")
+    local isHidden = table.contains(gmcp.Char.Status.flags,"hiding")
+    local isCamo = table.contains(gmcp.Char.Status.flags,"camouflaged")
+    
+    if isMounted then
+      send('|dismount')
+    end
+    
+    if openCommand ~= '' then
+      expandAlias(openCommand)
+    else
+      cecho('\n\n&lt;red&gt;TFE MAP: &lt;white&gt;unsure how to open the exit ' .. direction .. '\n')
+      cecho('&lt;orange&gt;TFE MAP: &lt;white&gt;use "&lt;green&gt;map open ' .. direction:sub(1,1) .. ' &lt;cmd&gt;&lt;white&gt;" to set the command to open the exit\n')
+      cecho('&lt;orange&gt;TFE MAP: &lt;white&gt;use "&lt;green&gt;map exit [n|e|s|w|u|d|in|out] &lt;cmd&gt;&lt;white&gt;" to add a special exit command \n' )
+      cecho('&lt;yellow&gt;TFE MAP: &lt;white&gt;setting an open command with &lt;green&gt;map open&lt;white&gt; is best, but for exits like enter portal where no\n') 
+      cecho('         &lt;white&gt;entrance appears you need to use a special exit\n' )
+      if (exitInfo and table.contains(exitInfo.flags, 'locked')) then      
+        send('unlock ' .. direction)
+      end
+      
+      send('open ' .. direction)
+    end
+    
+    if isMounted then
+      send('|mount')
+    end
+    
+    if isHidden then
+      send('|hide')
+    end
+    
+    if isCamo then
+      send('|camo')
+    end
+    
+  end
+
+end
+
+        
+tfe.speedWalkStep = function ()
+  
+  tfe.clearShortSpeedWalkTimer()
+  -- clear any room change watcher if it exists
+  if (tfe.speedwalking and tfe.speedwalking.roomChangeWatcher) then
+    tfe.speedwalking.roomChangeWatcher()
+    tfe.speedwalking.roomChangeWatcher = nil
+  end
+
+  if (tfe.speedwalking) then
+    
+    
+    -- check we are not off course...
+    local nextStep = tfe.getNextStep()
+
+    if (nextStep == nil) then
+            
+      -- clearing current walk before callback in case cb creates new path      
+  
+      
+      -- we made it to the end. call the callback if it exists
+      cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;at destination\n')
+      if (tfe.speedwalking.options and tfe.speedwalking.options.callback) then
+        local cb = tfe.speedwalking.options.callback
+        tfe.speedwalking = nil
+        raiseEvent(tfe.events.WALK_COMPLETE)
+        
+        -- in the final room we want to wait for the scan to be fully processed before we invoke the callback
+        njs50.onNextEvent(njs50.scanner.events.SCAN_PROCESSED, function() 
+          tempTimer(0, function()
+            cb()
+          end) -- , 'waiting for scan process handling to be completed'        
+        end)
+        
+      else  
+        tfe.speedwalking = nil
+        raiseEvent(tfe.events.WALK_COMPLETE)
+      end
+      
+      
+    
+    else
+    
+      -- we are where we should be. send a move etc
+      
+      if (not tfe.speedwalking.paused) then
+
+        tfe.startShortSpeedWalkTimer()
+
+        -- send command
+        if(nextStep and nextStep ~= '') then
+                    
+          local exitClosed = tfe.isExitClosed(nextStep)
+          
+          -- instead of trying to exit we will try to open the exit
+          if exitClosed then
+
+            tfe.speedwalking.roomChangeWatcher = njs50.onNextEvent(njs50.gmcp.events.ROOM_EXITS_UPDATE, function() 
+              -- step completed. do next step    
+              tfe.speedWalkStep()
+            end)
+            
+            tfe.openExit(nextStep)            
+          
+          else
+           
+            -- setup a single event watcher for a room change
+            tfe.speedwalking.roomChangeWatcher = njs50.onNextEvent(tfe.events.ROOM_CHANGED, function() 
+              -- step completed. do next step    
+              tfe.speedWalkStep()
+            end)
+            send( nextStep )    
+            tfe.advanceStepPosition()
+                     
+          end
+                       
+          
+        else
+          cecho('\n\n&lt;red&gt;TFE MAP: &lt;white&gt;unsure how to progress (missing special exit?)\n')
+        end
+        
+      else
+        cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;speedwalking paused\n')
+      end
+    
+    end
+      
+      
+    
+    
+  else
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;unable to take step, not currently speedwalking\n')
+  end
+
+end
+
+tfe.getNextStep = function (reverse)
+  -- not currently going anywhere
+  if (not tfe.speedwalking) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;no next step available, no path configured\n')
+    return nil
+  end
+  
+
+  -- check if we are lost and need to reroute...  
+  if (tostring(tfe.roomInfo.num) ~= tfe.speedwalking.path[tfe.speedwalking.pathPosition]) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;2 expected to be in room ' .. tfe.speedwalking.path[tfe.speedwalking.pathPosition] .. ' but was in ' .. tostring(tfe.roomInfo.num) ..', recalculating path \n')
+    
+    local expectedArea = getRoomAreaName(getRoomArea(tfe.speedwalking.path[tfe.speedwalking.pathPosition]))
+    -- if they expected to be in the ways send them back there
+    
+    if (gmcp.Char.Score.class == 'druid' and rex.match(expectedArea, [[^The Ways]]) and druid and druid.landwalk) then
+      tfe.supressNextRoomChange = true
+      cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;going to ways\n')
+      druid.landwalk(function()
+        tfe.supressNextRoomChange = nil
+        tfe.rerouteSpeedwalk()
+        send('queue scan')      
+      end)
+    else
+      tfe.rerouteSpeedwalk()
+      send('queue scan')
+    end
+    
+    return ''
+    
+  end  
+  
+  -- at destination
+  if (not reverse and tostring(tfe.roomInfo.num) == tfe.speedwalking.destination) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;no next step available, at destination\n')
+    return nil
+  end
+  
+  -- at start and reversed
+  if (reverse and tfe.speedwalking.pathPosition == 1) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;no next step available, at start and walking backwards\n')
+    return nil
+  end
+   
+  if (not reverse) then
+
+    return tfe.consts.exitmap[ tfe.speedwalking.directions[tfe.speedwalking.pathPosition] ] or tfe.speedwalking.directions[tfe.speedwalking.pathPosition]      
+  
+  else
+  
+    local specialExits = getSpecialExits(tfe.roomInfo.num)
+    local targetRoom = tonumber(tfe.speedwalking.path[tfe.speedwalking.pathPosition - 1])
+    
+    local cmd = ''
+    
+    if (specialExits and specialExits[targetRoom]) then
+      for command, idx in pairs(specialExits[targetRoom]) do 
+        cmd = cmd .. command .. ' &amp; '
+      end
+      cmd = cmd:gsub([[ &amp; $]], '')
+      
+    else
+      cmd = tfe.consts.reverse_dirs[ tfe.consts.exitmap[ tfe.speedwalking.directions[tfe.speedwalking.pathPosition - 1] ] ]
+    end
+    
+    return cmd  
+  
+  end
+  
+end
+
+tfe.getNextDirection = function (reverse)
+
+  -- not currently walking anywhere
+  if (not tfe.speedwalking) then
+    return nil
+  end
+   
+    -- check if we are lost and need to reroute...  
+  if (tostring(tfe.roomInfo.num) ~= tfe.speedwalking.path[tfe.speedwalking.pathPosition]) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;expected to be in room ' .. tfe.speedwalking.path[tfe.speedwalking.pathPosition] .. ' but was in ' .. tostring(tfe.roomInfo.num) ..', recalculating path \n')
+    tfe.rerouteSpeedwalk()
+    send('queue scan')
+    return nil
+  end
+   
+  -- at destination
+  if (not reverse and tostring(tfe.roomInfo.num) == tfe.speedwalking.destination) then
+    return nil
+  end
+  
+  -- at start and reversed
+  if (reverse and tfe.speedwalking.pathPosition == 1) then
+    return nil
+  end
+
+  
+  local nextpos = tfe.speedwalking.pathPosition
+    
+  if (reverse) then
+    nextpos = nextpos - 1
+  else
+    nextpos = nextpos + 1
+  end
+  
+  local target = tonumber(tfe.speedwalking.path[nextpos])
+  local exits = getRoomExits(tfe.roomInfo.num)
+      
+  for dir, vnum in pairs(exits) do
+    if (vnum == target) then 
+      direction = dir
+      break;
+    end
+  end
+  
+  return direction
+  
+end
+
+
+tfe.advanceStepPosition = function (reverse)
+
+  -- at destination
+  if (not tfe.speedwalking) then
+    cecho('\n&lt;orange&gt;TFE MAP: &lt;white&gt;attempted to advance step position when not speed walking\n')
+    return nil
+  end  
+
+  -- at destination
+  if (not reverse and tfe.speedwalking.pathPosition &gt; #tfe.speedwalking.directions ) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;attempted to step beyond end of path\n')
+    return nil
+  end
+  
+  -- at start and reversed
+  if (reverse and tfe.speedwalking.pathPosition == 1) then
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;attempted to reverse step below start of path\n')
+    return nil
+  end
+
+  if(tfe.speedwalking) then
+    if (not reverse) then
+      tfe.speedwalking.pathPosition = tfe.speedwalking.pathPosition + 1
+    else
+      tfe.speedwalking.pathPosition = tfe.speedwalking.pathPosition - 1
+    end
+  end
+end
+
+
+tfe.rerouteSpeedwalk = function ()
+  
+  if (tfe.speedwalking) then 
+  
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;rerouting speedwalk\n')
+    
+    if tfe.speedwalking.pathPosition == #tfe.speedwalking.path then
+      
+      if (gmcp.Room.Info.num ~= tfe.speedwalking.path[tfe.speedwalking.pathPosition]) then
+        tfe.speedwalking.pathPosition = tfe.speedwalking.pathPosition - 1
+      else
+    
+        cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;unable to reroute as already at destination\n')
+        return
+        
+      end
+    end
+   
+      local pd = 0
+      for pp = 1, tfe.speedwalking.pathPosition do
+        -- display(pp, tfe.speedwalking.path[pp], tfe.speedwalking.destination[pd+1])
+        if tonumber(tfe.speedwalking.path[pp]) == tonumber(tfe.speedwalking.destination[pd+1]) then
+          display(tfe.speedwalking.path[pp])
+          pd = pd + 1
+        end
+      end
+    
+      local newDestinations = {}
+      
+      for ndIdx = pd +1, #tfe.speedwalking.destination do
+        table.insert(newDestinations, tfe.speedwalking.destination[ndIdx])
+      end
+
+
+    if (tfe.speedwalking.roomChangeWatcher) then
+      tfe.speedwalking.roomChangeWatcher()
+      tfe.speedwalking.roomChangeWatcher = nil
+    end
+    
+    
+    local result = tfe.configureWalkPath(newDestinations, tfe.speedwalking.options, false)
+     -- display(tfe.speedwalking)
+    return result
+  
+  end
+  
+  
+end
+
+tfe.getExpandedPath = function(currentWpt, waypoints) 
+  
+  if (roomExists(currentWpt)) then
+  
+    local path = {}
+    local pathDirs = {}
+    
+    if (type(waypoints) ~= 'table') then
+      waypoints = {waypoints}
+    end
+    
+    for idx, waypoint in ipairs(waypoints) do 
+    
+      if getPath(currentWpt, waypoint) then
+         table.insert(path, speedWalkPath)
+         table.insert(pathDirs, speedWalkDir)
+      else
+        cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;No known path from ' .. getRoomName(currentWpt) .. ' (' ..         
+             tostring(currentWpt) .. ') to ' .. (getRoomName(waypoint) or 'unknown room') .. 
+             '(' .. tostring(waypoint) .. ')' .. '\n')
+        return nil
+      end
+    
+      currentWpt = waypoint
+    end -- end waypoint loop
+    
+    speedWalkPath = table.n_flatten(path)
+    speedWalkDir = table.n_flatten(pathDirs)
+    
+    return true
+	
+	else
+		cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;unable to update path., starting room not in map\n')
+    return nil
+	end
+
+end
+
+
+tfe.configureWalkPath = function (vnum, options, takeStep)
+
+  local currentRoom = gmcp.Room.Info.num
+
+  tfe.speedwalking = nil
+  
+  local dstring = tostring(vnum)
+  
+  if (type(vnum) ~= 'table') then
+    vnum = {vnum}
+  end
+  
+  dstring = table.concat(vnum, ', ')
+
+  cecho('&lt;green&gt;pathing: &lt;white&gt;' .. tostring(currentRoom) .. ' to ' .. dstring .. '\n') 
+
+
+  if tfe.getExpandedPath(currentRoom, vnum) then
+  
+    tfe.speedwalking = {
+      walkType = 'standard',
+      destination = vnum,
+      path = speedWalkPath,
+      directions = speedWalkDir,
+      pathPosition = 1,
+      options = options or {}
+    }
+  
+    table.insert(tfe.speedwalking.path, 1, tostring(currentRoom))
+    
+    if (takeStep and tfe.speedwalking) then
+      tfe.speedWalkStep()
+    end
+    
+    return true
+    
+  else 
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;unreachable destination ' .. dstring .. '\n')
+    
+
+    -- landwalk if available and required
+    local destArea = getRoomAreaName(getRoomArea(vnum[1]))
+    
+    -- if they are attempting to walk to the ways they will require intervention
+    if (tfe.druidWayAreas[destArea] and gmcp.Room.Info.area ~= "The Ways") then
+      
+      -- if they have the njs50-druid package attempt to landwalk
+      if (druid and druid.landwalk) then
+      
+        cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;attempting to use the druid ways\n')
+        druid.landwalk(function()
+          tfe.configureWalkPath(vnum, options, takeStep)
+        end)
+        return
+      
+      else
+        cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;attempted to walk to the druid ways\n')
+      end
+    
+      return
+    end  
+      
+  
+  end
+        
+
+
+  return false
+
+end
+
+
+tfe.gotoRoom = function (vnum, options)
+  
+  if (type(options) == 'function') then
+    local optCB = options
+    options = {callback = optCB}
+  elseif (type(options) == 'string') then
+    local optString = options 
+    options = {callback = function() send(optString) end}
+  elseif (type(options) ~= 'table') then
+    if (options ~= nil) then
+      cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;unknown options provided to tfe.gotoRoom\n')
+      display(type(options), options)
+      return
+    end
+    options = {}
+  end
+  
+  if (type(vnum) == 'table' and #vnum == 1) then
+    vnum = vnum[1]
+  end
+  
+  -- make sure vnum is a number
+  vnum = tfe.locations[vnum] or vnum
+  if (type(vnum) == 'string' and vnum:match([[^%d+$]])) then
+    vnum = tonumber(vnum)
+  end 
+  
+  if (vnum == gmcp.Room.Info.num) then
+    cecho('\n&lt;orange&gt;TFE MAP: &lt;white&gt;already at destination, no need to go anywhere!\n')
+    if (options and options.callback) then
+      options.callback()
+    end
+    raiseEvent(tfe.events.WALK_COMPLETE)    
+  else  
+    tfe.configureWalkPath(vnum, options, true)
+  end
+
+end
+
+tfe.turboWalkToRoom = function(vnum, options)
+      
+  if (type(options) == 'function') then
+    local optCB = options
+    options = {callback = optCB}
+  elseif (type(options) == 'string') then
+    local optString = options 
+    options = {callback = function() send(optString) end}
+  elseif (type(options) ~= 'table') then
+    if (options ~= nil) then
+      cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;unknown options provided to tfe.speedWalkToRoom\n')
+      display(type(options), options)
+      return
+    end
+    options = {}
+  end
+    
+  if (type(vnum) == 'table') then
+    
+    local oCB = options.callback or function() end
+    
+    local co
+    
+    co = coroutine.create(function()
+    
+      options.callback = function()        
+        -- we need the timer to make sure resume happens outside the execution of the yield
+        tempTimer(0, function()
+          coroutine.resume(co)
+        end)
+      end      
+      
+      for idx, num in ipairs(vnum) do      
+        tfe.turboWalkToRoom(num, options)                                
+        coroutine.yield()      
+      end      
+      
+      oCB()
+      
+    end) -- end of coroutine
+    
+    coroutine.resume(co) 
+    
+    return
+  end
+  
+  -- make sure vnum is a number
+  vnum = tfe.locations[vnum] or vnum
+  if (type(vnum) == 'string' and vnum:match([[^%d+$]])) then
+    vnum = tonumber(vnum)
+  end 
+  
+  local path = tfe.getPath(gmcp.Room.Info.num, vnum, true)
+  
+  -- for idx = 1, #path.path do
+    -- display(idx, path.path[idx], path.waypoints[idx])
+  -- end
+  
+  local doWalk = function()
+    tfe.speedwalking = {
+      walkType = 'turbo',
+      destination = vnum,
+      options = options or {},
+      pathPosition = 0,
+      path = path.path,
+      roomCounts = path.roomCounts,
+      waypoints = path.waypoints
+    }
+    
+    tfe.turboWalkStep()  
+  end
+  
+  -- equip a travel set if player has one and going more than 30 rooms
+  if path.distance and path.distance &gt; 20 and player and player.gearSets and player.gearSets.travel then
+  
+    local cb = options.callback
+    
+    options.callback = function()
+      resetGear(cb)
+    end
+  
+    local setName = 'travel' 
+    
+    if (gmcp.Char.Score.level &gt;= 55 and player.gearSets.travel55) then
+      setName = 'travel55'
+    end
+  
+    equipPartial(setName, function()    
+      doWalk()
+    end)
+    
+  else
+    doWalk()
+  end
+
+          
+  
+
+  
+
+  
+end
+
+
+tfe.turboWalkPause = function()
+  tfe.speedwalking.paused = true
+  tfe.tuboWalkKillRoomChangeWatcher()
+  tfe.timeout.kill('turbowalk-idle-check')  
+  send('+gasp')
+end
+
+tfe.turboWalkResume = function()
+  if (tfe.speedwalking and tfe.speedwalking.walkType == 'turbo') then
+    tfe.speedwalking.paused = nil
+    tfe.speedwalking.interrupted = nil
+    tfe.turboWalkReroute()
+    tfe.turboWalkActionStep()
+  else
+    cecho('\n&lt;orange&gt;TFE MAP: &lt;white&gt;attempted to resume non existant turbo route\n')
+  end
+end
+
+tfe.turboWalkReroute = function()
+  cecho('\n&lt;orange&gt;TFE MAP: &lt;white&gt;rerouting turbo walk\n')
+  local path = tfe.getPath(gmcp.Room.Info.num, tfe.speedwalking.destination, true)
+  tfe.speedwalking.pathPosition = 0
+  tfe.speedwalking.path = path.path
+  tfe.speedwalking.roomCounts = path.roomCounts
+  tfe.speedwalking.waypoints = path.waypoints
+  tfe.speedwalking.interrupted = nil
+end
+
+tfe.turboSpeedwalkStop = function()
+  cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;turbo walk stopped\n')
+  tfe.tuboWalkKillRoomChangeWatcher()
+  tfe.timeout.kill('turbowalk-idle-check')
+  send('+gasp')
+end
+
+tfe.tuboWalkKillRoomChangeWatcher = function()
+  if (tfe.roomChangeWatch) then
+    killAnonymousEventHandler(tfe.roomChangeWatch)
+    tfe.roomChangeWatch = nil
+  end
+end
+
+ 
+tfe.turboWalkInterrupted = function()
+  
+  if (tfe.speedwalking.resumeOnInterrupt) then
+    tfe.speedwalking.resumeOnInterrupt = nil
+    tfe.turboWalkResume()
+  else
+    tfe.speedwalking.interrupted = true
+  end
+end 
+
+tfe.turboWalkActionStep = function()
+  
+  local action = tfe.speedwalking.options.stepAction
+  
+  if (action and type(action) == 'string') then
+    expandAlias(action)
+    tfe.turboWalkStep()
+  elseif (action and type(action) == 'function') then
+    tfe.speedwalking.step_action_pending = true
+    tfe.timeout.kill('turbowalk-idle-check')
+    action(function()
+      tfe.speedwalking.step_action_pending = nil
+      tfe.turboWalkStep()
+    end)
+  else
+    tfe.turboWalkStep()
+  end
+
+end
+
+tfe.turboWalkStep = function()
+  
+  if (not tfe.speedwalking) then
+    -- this speedwalk has been cancelled
+    tfe.tuboWalkKillRoomChangeWatcher()
+    tfe.timeout.kill('turbowalk-idle-check')
+    return
+  end
+  
+  if (tfe.speedwalking.paused) then
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;turbo speedwalk is paused\n')
+    return
+  end
+  
+  if (tfe.speedwalking.step_action_pending) then
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;attempted turbo speedwalk step while a step action was pending\n')
+    return
+  end
+    
+  tfe.speedwalking.pathPosition = tfe.speedwalking.pathPosition + 1
+  
+  if (tfe.speedwalking.pathPosition &gt; #tfe.speedwalking.path) then
+    
+    cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;reached end of speedwalk instructions\n')
+    
+    local cb = tfe.speedwalking.options.callback
+    
+    tfe.speedwalking = nil
+    
+    if (cb) then cb() end     
+  
+  else
+  
+    tfe.timeout.create('turbowalk-idle-check', 10, function()
+      cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;turbo speedwalk timed out - rerouting and resuming\n')      
+      tfe.turboWalkReroute()    
+      tfe.turboWalkActionStep()
+    end)    
+  
+    local cmd = tfe.speedwalking.path[tfe.speedwalking.pathPosition]
+    local dest = tfe.speedwalking.waypoints[tfe.speedwalking.pathPosition]
+    local steps = tfe.speedwalking.roomCounts[tfe.speedwalking.pathPosition]
+  
+    if steps &gt; 0 then
+    
+      tfe.tuboWalkKillRoomChangeWatcher()
+      
+      tfe.roomChangeWatch = registerAnonymousEventHandler(tfe.events.ROOM_CHANGED, function ()  
+        
+        steps = steps - 1        
+        if steps == 0 then
+                  
+          tfe.timeout.kill('turbowalk-idle-check')
+          tfe.tuboWalkKillRoomChangeWatcher()
+          
+          -- check we made it to the correct room before proceeding
+          if (gmcp.Room.Info.num == tonumber(dest)) then          
+            tfe.turboWalkActionStep()
+          else
+            cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;turbo speedwalk finished in the wrong room - rerouting\n')      
+            tfe.turboWalkReroute()    
+            tfe.turboWalkActionStep()
+          end
+          
+        else
+          tfe.timeout.refresh('turbowalk-idle-check')
+        end
+        
+      end)
+  
+      send(cmd)
+    
+    else -- no actual step, just open a door...
+    
+      local dir = rex.match(cmd, [[^mod (\w+)$]])
+      if (dir) then
+        tempTimer(0, function()     
+          tfe.openExit(dir, function()            
+            tfe.timeout.kill('turbowalk-idle-check')
+            tfe.turboWalkActionStep()          
+          end)
+        end) -- , 'delay for room to be processed'
+      else
+        cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt;turbo speedwalk unsure how to proceed with: ' .. cmd .. '\n')
+      end
+      
+    end
+    
+  end
+
+end
+
+
+-- to allow clicking the map
+function doSpeedWalk()
+ 	tfe.gotoRoom(speedWalkPath[#speedWalkPath])
+end
+
+
+tfe.getPath = function(src, dest, useOpenAlias) 
+  
+  tfe.locations = tfe.locations or {}
+  
+  local srcRnum = tfe.locations[src] or src
+  local destRnum = tfe.locations[dest] or dest
+  
+  if (type(srcRnum) == 'string' and srcRnum:match([[^%d+$]])) then
+    srcRnum = tonumber(srcRnum)
+  end
+  if (type(destRnum) == 'string' and destRnum:match([[^%d+$]])) then
+    destRnum = tonumber(destRnum)
+  end
+  
+  
+  if not (type(srcRnum) == 'number' and roomExists(srcRnum)) then
+    return { error = 'Invalid start location ' .. src .. '\n' }
+  end
+  
+  if not (type(destRnum) == 'number' and roomExists(destRnum)) then
+    return { error = 'Invalid end location ' .. dest .. '\n' }
+  end
+  
+  
+  
+  if getPath(srcRnum, destRnum) then
+  
+    cecho('&lt;green&gt;TFE MAP:&lt;white&gt; pathing from ' .. getRoomName(srcRnum) .. ' to ' .. getRoomName(destRnum) .. '\n')
+    
+    local pathDirs = speedWalkDir
+    local pathNums = speedWalkPath
+  -- display(pathDirs,pathNums)
+    
+    local pathDirssToString = function(dirs, rooms)
+    
+      local currentDir = ''
+      local currentCount = 0
+      local currentRC = 0
+      local distance = 0
+    
+      local speedString = ''
+      
+      local instructions = {}
+      local stepNums = {}
+      local stepRooms = {}
+      
+      local addCurrent = function()
+        if (currentDir ~= '') then
+          currentRC = currentRC + currentCount
+          if (currentCount &gt; 1) then
+            speedString = speedString .. tostring(currentCount)            
+          end
+          speedString = speedString .. currentDir
+        end    
+      end
+      
+      local finishCurrent = function(room)        
+        
+        if (currentDir ~= '') then
+          addCurrent()
+          currentDir = ''
+          currentCount = 0
+        end
+        if (speedString ~= '') then
+          -- display('end of direction cmd:', room, i)   
+          table.insert(stepNums, room)
+          table.insert(stepRooms, currentRC)
+          distance = distance + currentRC
+          table.insert(instructions, '|speed ' .. speedString)
+          speedString = ''
+        end
+        currentRC = 0
+      end
+      
+      for i = 1, #dirs do
+        
+        local dir = dirs[i]
+        local room = rooms[i]
+        local prevRoom = rooms[i - 1] or srcRnum
+        
+        if (dir == 'up') then dir = 'u' end
+        if (dir == 'down') then dir = 'd' end
+        
+        local isDoor, openCmd = tfe.isDoor(prevRoom, dir)
+        
+        if isDoor then
+          finishCurrent(prevRoom)
+          table.insert(stepNums, prevRoom)
+          table.insert(stepRooms, 0)
+          if (useOpenAlias) then
+            table.insert(instructions, 'mod ' .. dir)
+          else
+            table.insert(instructions, '|' .. openCmd)
+          end
+          addCurrent()
+          currentDir = dir
+          currentCount = 1          
+        elseif not dir:match("^[neswud]$") then
+          finishCurrent(prevRoom)
+          table.insert(stepNums, room)
+          table.insert(stepRooms, 1)
+          distance = distance + 1       
+          -- display('non direction cmd:', room, i)   
+          table.insert(instructions, '|' .. rex.gsub(dir, ' &amp; ([^|])', ' &amp; |%1'))
+        elseif dir ~= currentDir then
+          addCurrent()
+          currentDir = dir
+          currentCount = 1   
+        else
+          currentCount = currentCount + 1   
+        end
+        
+      end
+      
+      finishCurrent(rooms[#rooms])
+      
+      return instructions, stepNums, stepRooms, distance
+    
+    end
+    
+    local path, pathPoints, roomCounts, distance = pathDirssToString(pathDirs, speedWalkPath)
+    
+    return {
+      from = getRoomName(srcRnum),
+        to = getRoomName(destRnum),
+      path = path,
+      waypoints = pathPoints,
+      roomCounts = roomCounts,
+      distance = distance,
+    }
+     
+  else
+    return { error = 'No known path from ' .. getRoomName(srcRnum) .. '(' .. 
+             tostring(srcRnum) .. ') to ' .. getRoomName(destRnum) .. '(' .. tostring(destRnum) .. ')' }
+  end
+  
+end
+
+
+tfe.getDirectionToPreviousRoom = function()
+  local dir = ''
+  for exitDir, num in pairs(tfe.roomInfo.exits) do
+    if num == tfe.previousRoomInfo.num then
+      dir = exitDir
+    end
+  end
+  
+  return dir  
+  
+end
+
+tfe.mapFind = function(room, chan)
+
+  chan = chan or 'gstat'
+
+  local roomlist = searchRoom(room)
+  
+  local roomMatch = false
+  
+  for roomId, roomName in pairs(roomlist) do
+    -- if (roomName == room) then
+      send(chan .. ' location: ' .. common.getAreaName(roomId) .. ' : #' .. tostring(roomId) .. ' ' .. roomName) 
+      roomMatch = true
+    -- end
+  end
+  
+  if (not roomMatch) then
+    send(chan .. ' location: not found')
+  end
+ 
+
+end</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>speedwalk locations</name>
+			<packageName />
+			<script>tfe.locations = tfe.locations or {}
+
+local lookup = {
+  hillies = 28018,
+  pixies = 44904,
+  denab = 28132,
+  denabBank = 30389,
+  kha = 27008,
+  khaBank = 27042,
+  med = 107,
+  medBank = 144,
+  khaWeap = 27031,
+  khaArmor = 27036,
+  pen = 37013,
+  penBank = 37249,
+  sos = 30752,
+  sosBank = 30874,
+  voal = 20088,
+  voalBank = 20027,
+  voalWeap = 20010,
+  cairn = 26568,
+  knight = 21096,
+  hollow = 91675,
+  blade = 19370,
+  wayward = 40585,
+  whisper = 28134,
+  chi = 25000,
+  zaranders = 27500,
+  barbs = 66071,
+  brith = 63534,
+  brithBank = 63521,
+  tg = 17331,
+  cycs = 44765,
+  stonies = 19164,
+  toys = 39008,
+  vyans = 28146,
+  root = 19376,
+  yetis = 94611,
+  ettercaps = 70104,
+  cairnValley = 57258,
+  temple = 21257,
+  narak = 36070,
+  narakBank = 36094,
+  halflings = 21076,
+  midnight = 76594,
+  corsair = 42511,
+  titans = 28028,
+  titansStart = 36772,
+  fire = 25559,
+  midnight = 76594,
+  amber = 95016,
+  outback = 54593,
+  khiren = 34579,
+  crabtown = 48158,
+  fgs = 92559,
+  monestry = 28067,
+  monastery = 28067,
+  monastary = 28067,
+  slens = 76542,
+  tgOut = 35817,
+  wrath = 33084,
+  landslide = 37045,
+  brigade = 76504,
+  swami = 24048,
+  durkang = 92504,
+  sighere = 11513,
+  wastes = 58020,
+  fgs = 92559,
+  direwolves = 33027,
+  darkhaven = 30026,
+  dh = 30026,
+  darkhavenBank = 30011,
+  dhBank = 30011,
+  jungle = 5821,
+  beach = 5874,
+  cave = 5860,
+  forest = 5850,
+  bamboo = 5837,
+  tundra = 5817,
+  desert = 5855,
+  hills = 5801,
+  field = 5802,
+  swamp = 5803,
+  mountain = 5800,
+  highMonk = 12500,
+  mindflayer = 2551,
+  minos = 92588,
+  starwater = 19377,
+  cathedral = 21009, 
+  darkCitadel = 23074, 
+  luerna = 31051,
+  plantation = 16776,
+  kobolds = 26574,
+  rabbits = 38324,
+  tombOfOrder = 57309,
+  crone = 36011,
+  isle = 36126,
+  orl = 33501,
+  orlBank = 33551,
+  trogPortal = 49326,
+  efreets = 23091,
+  seaSprites = 22046,
+  bullywugs = 1049,
+  dragonHatchery = 1022,
+  trogs = 19348,
+  cart = 82220,
+  narakDock = 36126,
+  arhimans = 11349,
+  ahrimans = 11349,
+  zaf = 99106,
+  reaver = 30346,
+  legate = 57534,
+  citadel = 23074,
+  palace = 20081,
+  monkJar = 12559,
+  citizen = 152,
+  quickstep = 36098,
+  teacher = 155,
+  narakRescue = 36148,
+  narakDisarm = 36074,
+  crone = 36011,
+  mistKing = 10679,
+  mistDragon = 10680,
+  mistExit = 10681,
+  mistCave = 10683,
+  mistBoss = 10678,
+  pandas = 25558,  
+  sosWeap = 30754,
+  bloodwash = 76504,
+  hakkDock = 50919,
+  medDock = 21112,
+  hakk = 50905,
+  hakkBank = 50937,
+  fireAnts = 42579,
+  sphinxes = 21000,
+  lonil = 57445,
+  chiBank = 924,
+  grems = 37092,
+  medBridge = 513,
+  medToYetisDry = {513, 494, 94611},
+  yetisToMedDry = {94611, 494, 513},
+  entMoot = 19311,
+  brem = 89000,
+  bremBank = 89045,
+  grove = 48127,
+  camp = 16093,
+  downfall = 16093,
+  grove = 48123,
+  ghostWife = 46533,
+  mbears = 82040,
+  marble = 57452,
+  cg = 31148,
+  tss = 31005,
+  botsPub = 3252
+}
+
+for name, vnum in pairs(lookup) do
+  tfe.locations[name] = vnum
+end</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>last script (to trigger dependencies!)</name>
+			<packageName />
+			<script>raiseEvent('tfeMapperLoaded')</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>searches</name>
+			<packageName />
+			<script>njs50 = njs50 or {}
+
+njs50.roomSearches = njs50.roomSearches or {}
+
+local defaultSearches = {
+
+
+  -- spooky isles part 1
+  
+  ['10607'] = {
+    'search seaweed',
+    'search seashell',
+    'search shell',
+  },
+  
+  ['10608'] = {
+    'search tree',
+    'search trunk',
+  },
+  
+  ['10609'] = {
+    'search rib'
+  },
+  
+  ['10612'] = {
+    'search tree'
+  },
+    
+  ['10613'] = {
+    'search fern'
+  },  
+      
+  ['10616'] = {
+    'pick plant &amp; pluck plant &amp; pick plant &amp; pluck plant'
+  },
+ 
+  ['10618'] = {
+    'pick thorn &amp; pick thorn &amp; pick thorn &amp; pick thorn'
+  },
+  
+    
+  ['10621'] = {
+    'search puddle &amp; search puddle'
+  },  
+  
+  ['10626'] = {
+    'pick berry &amp; pick berry &amp; pick berry &amp; pick berry &amp; pick berry'
+  },
+   
+  ['10628'] = {
+    'search vine &amp; search vine'
+  }, 
+  
+
+
+  ['10630'] = {
+    'pick berry &amp; pick berry &amp; pick berry &amp; pick berry &amp; pick berry'
+  },   
+  
+  ['10634'] = {
+    'pick flower &amp; pick flower &amp; pick flower &amp; pick flower'
+  }, 
+    
+  ['10635'] = {
+    'search trunk &amp; search trunk',
+    'harvest cassava &amp; harvest cassava &amp; harvest cassava',
+  },
+    
+  
+  ['10637'] = {
+    'pick berry &amp; pick berry &amp; pick berry &amp; pick berry &amp; pick berry'
+  },   
+      
+  ['10638'] = {
+    'search root'
+  },
+   
+      
+  ['10643'] = {
+    'search bush'
+  },
+     
+  ['10646'] = {
+    'search couch',
+    'search tap',
+    'get candle',
+  },  
+
+  ['10647'] = {
+    'search furniture',
+    'search ash',
+  },
+   
+  ['10648'] = {
+    'search table',
+    'search bench',
+    'search cabinet',
+  },
+    
+  
+  ['10649'] = {
+    'search shel',
+    'search table',
+    'search scon',
+    'search ash',
+    'search sill',
+    'search window',
+    'search bench',
+  },
+  
+    
+  ['10668'] = {
+    'search sand &amp; search sand &amp; search jelly',
+  },
+  
+  -- spooky isles part 2
+
+  
+  ['11104'] = {
+    'search fungus',
+    'get raff',
+  },
+    
+  ['11105'] = {
+    'pick flower &amp; pick flower &amp; pick flower &amp; pick flower',
+    'get bark &amp; get bark',
+    'pick goose &amp; pick goose &amp; pick goose &amp; pick goose &amp; pick goose &amp; pick goose',
+    
+  },
+
+  ['11109'] = {
+    'search crevice'
+  },  
+
+  ['11110'] = {
+    'search fern',
+    'search moss',
+  },
+  
+  ['11112'] = {
+    'search fern'
+  },
+  
+-- this one might hurt
+-- ['11114'] = {
+  -- 'cut tendril'
+  -- -- 'cut tendril'
+-- },
+
+  ['11116'] = {
+    'search vine',
+    'pick flower &amp; pick flower &amp; pick flower &amp; pick flower'
+  },
+
+   
+  ['11122'] = {
+    'search book',
+    'search cabinet',
+    'search table',
+  },    
+
+   
+  ['11123'] = {
+    'search couch',
+    'search bed',
+    'search shelf',
+    'search table',
+  },    
+  
+  ['11130'] = {
+    'search blanket',
+  },   
+  
+  
+  ['11130'] = {
+    'get crystal',
+  },   
+  
+  
+  ['11142'] = {
+    'break crystal',
+  },    
+  
+  -- western expanse (in brith)
+  
+  ['63542'] = { 
+    'search bar',
+  },
+
+  
+  ['63543'] = { 
+    'search bone',
+  },
+  
+  -- western expanse
+  
+  ['72202'] = { 
+    'search pile',
+  },
+  
+  ['72210'] = { 
+    'pick flower',
+  },
+  
+  ['72212'] = { 
+    'meteorite_alias', -- dig crater w/ shovel equipped
+  },  
+
+  ['72220'] = { 
+    'search guano',
+  },
+  
+  ['72221'] = { 
+    'pick honey',
+  },
+
+  ['72240'] = { 
+    'pick black',
+  },
+  
+  ['72242'] = { 
+    'pick flower',
+  },
+  
+  ['72243'] = { 
+    'pick iris',
+  },
+  
+  
+  ['72245'] = { 
+    'snapping_turtle_alias', -- move branch/kill turtle/search alcove -&gt; turtle egg
+  },    
+  
+  ['72250'] = { 
+    'pick flower',
+  },
+  
+  ['72264'] = { 
+    'search bone',
+  },
+  
+  ['72271'] = { 
+    'search camp',
+  },
+  
+  ['72276'] = { 
+    'search cra',
+    'get all water-',
+  },
+
+  
+  ['72299'] = { 
+    'search stone',
+  },    
+  
+  ['72300'] = { 
+    'search bone',
+  },
+  
+  ['72312'] = { 
+    'search dec',
+  },
+  
+  ['72313'] = { 
+    'search lil &amp; |search dec',
+  },
+  
+    
+  ['72317'] = { 
+    'search rot &amp; |search can',
+  },
+  
+    
+  ['72335'] = { 
+    'get all corpse',
+  },
+  
+  ['72338'] = { 
+    'search guano',
+  },
+
+  -- dragonspire valley
+  
+   
+  ['50662'] = { 
+    'search pile',
+  }, 
+
+  ['50660'] = { 
+    'search pile',
+  }, 
+
+  ['50658'] = { 
+    'search pile',
+  }, 
+
+  ['50655'] = { 
+    'search pile',
+  }, 
+   
+  ['50656'] = { 
+    'search ivy',
+  }, 
+   
+  ['50652'] = { 
+    'search lean', 
+    'search wood',
+  },    
+  
+  ['50672'] = { 
+    'search pebble',
+  },    
+  
+  ['50667'] = { 
+    'search herb',
+    'search herb',
+    'search herb',
+    'search herb',
+  },
+  
+  ['50673'] = { 
+    'search herb',
+    'search herb',
+    'search herb',
+    'search herb',
+  },      
+      
+  ['50687'] = { 
+    'search cage',
+  },     
+  
+      
+  ['50674'] = { 
+    'get stone',
+    'pick flower',
+  },      
+  
+      
+  ['50650'] = { 
+    'get nest &amp; get all nest',
+  },   
+      
+  ['50651'] = { 
+    'get nest &amp; get all nest',
+  },     
+
+      
+  ['50686'] = { 
+    'search book',
+  },      
+
+  -- cathedral
+      
+  ['11519'] = { 
+    'search pile',
+  },  
+  
+      
+  ['11513'] = { 
+    'search desk',
+    'get all desk',
+  },    
+
+  -- fire giants
+  
+  ['10530'] = { 
+    'get human barrel &amp; get all human.corpse &amp; drop human.corpse',
+  },  
+
+  
+  ['10534'] = { 
+    'climb vine',
+  },  
+  
+  ['10560'] = { 
+    'smash barrel &amp; get all &amp; get all corpse &amp; drop all.corpse',
+    'search hole &amp; drop all.rancid.slab'
+  },  
+  
+  ['10569'] = { 
+    'search skeleton &amp; |smash skull',
+    'search ash',
+  },  
+  
+  ['10573'] = { 
+    'search throne',
+  },  
+  
+  ['10584'] = { 
+    'get all.crystal,all.chunk',
+  },     
+
+-- Room# 10542: Shaper Chest: unfinished mithril axe-head, chunk of vulcanized adamantium, chain-linked mithril belt
+
+-- Room# 10575: Fire Lord Chest: large gold mesh gown, block of marble, vulcanized adamantium
+-- Room# 10584: East of Lava Dancer: chunk of vulcanized adamantium, Crystal of duality
+
+  -- heidi and co
+  
+      
+  ['92571'] = { 
+    'search stream',
+  },  
+      
+  ['92572'] = { 
+    'search tool',
+  },      
+  
+  
+  -- tireth swamp
+  ['67519'] = {
+    'search weap',
+    'get breast'
+  },
+  
+  -- brem
+
+
+  ['17022'] = {
+    'search shel',
+  },
+
+  ['17023'] = {
+    'search shel',
+  },
+
+  ['17047'] = {
+    'search nest &amp; |break pellet',
+  },
+  
+  ['17059'] = {
+    'shake branch &amp; |get feather',
+  },
+  
+  -- ahrimans
+
+
+  ['5614'] = {
+    'search bones',
+    'search skul',
+  },
+
+  ['5616'] = {
+    'search rubble',
+    'search books',
+  },
+  
+
+  ['5618'] = {
+    'search bones',
+    'pull manacle',
+  },  
+
+  ['5618'] = {
+    'move stone &amp; |get all &amp; |drop all.corpse',
+  },  
+
+  ['5620'] = {
+    'search table',
+  },  
+      
+  ['5643'] = {
+    'search rags',
+  },
+
+  ['5644'] = {
+    'search rubble',
+  },
+
+  ['5621'] = {
+    'search wood',
+  },
+
+  ['5645'] = {
+    'pull manacle',
+  },
+
+  ['5646'] = {
+    'search moss',
+  },
+
+  ['5640'] = {
+    'search books',
+  },
+
+  ['5629'] = {
+    'pull manacle',
+  },
+  
+  ['5630'] = {
+    'search desk',
+  },
+  
+  
+  ['5631'] = {
+    'get staff',
+  },
+  
+  ['5641'] = {
+    'search draw',
+  },
+
+  ['5642'] = {
+    'search crates',
+    'search laundry',
+  },
+
+  ['5637'] = {
+    'search desk',
+  },
+
+  ['5639'] = {
+    'search tome',
+  },
+
+  ['5634'] = {
+    'get all books',
+  },
+
+  ['5636'] = {
+    'search table',
+  },
+  
+  -- cairn peak ruins
+
+  ['51039'] = {
+    'search part',
+  },
+
+  ['51068'] = {
+    'pick flower',
+  },
+
+  ['51026'] = {
+    'search fern',
+  },   
+  
+  ['51123'] = {
+    'search shelv',
+  }, 
+
+  ['51124'] = {
+    'search desk',
+    'search bureau',
+  }, 
+
+  ['51121'] = {
+    'search wood',
+  }, 
+
+  ['51127'] = {
+    'search shel',
+  }, 
+
+  ['51126'] = {
+    'search shelv',
+  }, 
+
+  ['51125'] = {
+    'search detr',
+  }, 
+
+  ['51129'] = {
+    'search shelves',
+    'search strongbox',
+    'search table',
+  }, 
+  
+  ['51132'] = {
+    'search bur',
+  }, 
+  
+  ['51122'] = {
+    'search bed',
+    'search desk',
+  }, 
+ 
+  ['51149'] = {
+    'search shel',
+    'search ches',
+  }, 
+   
+  
+  -- black wastes
+  
+  ['51440'] = {
+    'get all corpse',
+  },   
+       
+  ['51391'] = {
+    'pick flower'
+  },
+  
+  ['51350'] = {
+    'get crystal'
+  },
+  
+  
+  -- training grounds
+  ['17317'] = {
+    'search desk &amp; search desk &amp; search desk',
+  }, 
+
+  ['17313'] = {
+    'search shelves',
+    'search fire',
+    'search canvas',
+  },  
+
+  ['17312'] = {
+    'search book',
+    'search fire',
+    'get all table',
+  },
+  
+  ['17321'] = {
+    'search drain'
+  },
+  
+  ['17328'] = {
+    'search feed &amp; search feed &amp; search feed'
+  },
+  
+  ['17346'] = {
+    'search grave'
+  },
+  
+  ['17262'] = {
+    'search bar'
+  },  
+  
+
+  -- bloodwash hills
+  
+  ['15131'] = {
+    'pick blackb &amp; pick blackb &amp; pick blackb &amp; pick blackb'
+  },
+
+  ['15129'] = {
+    'pick rasp &amp; pick rasp &amp; pick rasp &amp; pick rasp'
+  },
+  
+  ['15133'] = {
+    'pick grape &amp; pick grape &amp; pick grape &amp; pick grape'
+  },  
+
+  
+  ['15135'] = {
+    'get blade' -- probably nothing
+  }, 
+       
+  ['15136'] = {
+    'search container'
+  },
+  
+  ['15137'] = {
+    'search barrels'
+  },
+  
+  ['15142'] = {
+    'search cabinet &amp; search cabinet &amp; search cabinet &amp; search cabinet &amp; search cabinet',
+    'search bed',
+  },
+    
+  ['15145'] = {
+    'search shelf &amp; search bench &amp; search shelf &amp; search bench'
+  },
+  
+  ['15146'] = {
+    -- takes multiple searches sometimes
+    'search bone &amp; search bone &amp; search bone &amp; search bone &amp; search bone &amp; search bone'
+  },
+  
+  ['15148'] = {
+    'search rack'
+  },
+  
+  ['15149'] = {
+    'search crate'
+  },
+  
+  ['15154'] = {
+    'get statuette'
+  },
+  
+  ['15155'] = {
+    'search shelf'
+  },
+  
+  ['15156'] = {
+    'get javelin &amp; |drop all.javalin.corpse',
+    'get all rack',
+  },
+  
+  -- crank sets trap east of here
+  -- ['15171'] = {
+    -- 'turn crank'
+  -- },
+    -- 
+  -- ['15172'] = {
+    -- 'turn crank'
+  -- },
+    
+  ['15175'] = {
+    'search mound'
+  },
+
+  ['15178'] = {
+    'search cot',
+    'get all table'
+  },
+  
+  ['15180'] = {
+    'search pile',
+    'get all corpse'
+  },
+  
+  ['15182'] = {
+    'search shelves'
+  },    
+  
+  -- minos
+  ['98862'] = {
+    'search shel &amp; search shel &amp; search shel &amp; search shel'
+  },  
+  
+  ['98877'] = {
+    'search desk'
+  },
+  
+  ['98873'] = {
+    'search shel &amp; search shel &amp; search shel &amp; search shel'
+  },
+  
+  ['98876'] = {
+    'search shel &amp; search shel &amp; search shel &amp; search shel'
+  },
+  
+  -- ['98890'] = { -- need to be on the quest or something
+    -- 'search alcove'
+  -- },  
+  
+  ['98891'] = {
+    'search shel &amp; search shel &amp; search shel &amp; search shel',
+    'search table',
+  },
+  
+  ['98896'] = {
+    'search shel &amp; search shel &amp; search shel &amp; search shel'
+  },       
+  
+
+-- Room # (Warlord)- get all from table - large raw carrot, iron mug, wide parchment, steel two-handed battle axe.  
+
+  -- hakk
+
+  ['13003'] = {
+    'get all dolphin',
+  }, 
+  
+
+  ['13015'] = {
+    'search scaf',
+    'search wood',
+    
+  },  
+  
+  -- ['13016'] = {
+    -- 'search debris',
+    -- 'search rubble',
+  -- },   
+
+  ['50929'] = {
+    'search frame &amp; search frame',
+    'get all 2.table &amp; get all table &amp; drop all.food',
+  }, 
+  
+  -- marble temple
+
+  ['3850'] = {
+    'search fern &amp; search fern &amp; search fern &amp; search fern',
+  },   
+
+  ['3858'] = {
+    'search plant &amp; search plant &amp; search plant',
+  },   
+
+  ['3864'] = {
+    'search sconce',
+  },   
+
+  ['3867'] = {
+    'search debris',
+  },    
+
+  ['3868'] = {
+    'search hole',
+  },    
+
+  ['3879'] = {
+    'move rubble &amp; |get all &amp; |drop all.corpse',
+  },    
+
+  ['3882'] = {
+    'search sconce',
+  },    
+
+  ['3885'] = {
+    'search barrel &amp; search barrel &amp; search barrel',
+    'search shelf &amp; search shelf &amp; search shelf',
+  },     
+
+  ['3888'] = {
+    'open desk &amp; get all desk',
+  },     
+
+  ['3891'] = {
+    'search blanket',
+  },     
+
+  ['3892'] = {
+    'search blanket',
+  },     
+
+  ['3893'] = {
+    'search blanket',
+  },      
+
+  ['3895'] = {
+    'search shelf',
+  },      
+
+  ['3896'] = {
+    'search cup',
+  },      
+
+  ['3898'] = {
+    'search barrel &amp; search barrel &amp; search barrel',
+    'search shelf &amp; search shelf &amp; search shelf',
+  },     
+  
+  
+  -- wood imps
+
+  ['47524'] = {
+    'search hole',
+  }, 
+
+  ['47528'] = {
+    'search stone',
+  }, 
+
+  ['47514'] = {
+    'search supp',
+  },     
+  
+  -- lost caravan
+
+  ['70031'] = {
+    'search pillow',
+  }, 
+
+  ['70033'] = {
+    'search cushion',
+  }, 
+
+  ['70015'] = {
+    'pick clover',
+  },   
+}
+
+for k, v in pairs(defaultSearches) do
+  njs50.roomSearches[k] = v
+end
+
+njs50.addSearchSymbolsToMap = function()
+
+  for idx in pairs(njs50.roomSearches) do
+    setRoomChar(idx, '#')
+  end
+
+
+  local areas = getAreaTable()
+  local areaId = areas[tfe.roomInfo.area .. ' : ' .. tostring(tfe.roomInfo.area_id)]
+
+  local rooms = getAreaRooms(areaId)
+
+
+  for roomIdx = 0, #rooms do
+
+    -- add in searches from map data
+    local results = getRoomUserData(rooms[roomIdx], "inspectResult")  
+    if (results and results ~= "") then
+      results = yajl.to_value(results)
+      if (#results.searchWords &gt; 0) then      
+        setRoomChar(rooms[roomIdx], '#')
+      end 
+    end    
+    
+    -- manual searches
+    results = getRoomUserData(rooms[roomIdx], "manualSearch")  
+    if (results and results ~= "") then
+      results = yajl.to_value(results)
+      if (#results &gt; 0) then
+        setRoomChar(rooms[roomIdx], '#')   
+      end 
+    end       
+    
+  
+  end
+    
+  
+end
+
+
+njs50.markRoomsFromInspect = function()
+
+  local areas = getAreaTable()
+  local areaId = areas[tfe.roomInfo.area .. ' : ' .. tostring(tfe.roomInfo.area_id)]
+
+  local rooms = getAreaRooms(areaId)
+
+
+  for roomIdx = 0, #rooms do
+
+  -- add in searches from map data
+  local results = getRoomUserData(rooms[roomIdx], "inspectResult")  
+  if (results and results ~= "") then
+    results = yajl.to_value(results)
+    if (#results.searchWords &gt; 0) then
+      -- cecho('\n&lt;green&gt;MAP&lt;white&gt;: performing searches stored in map data\n')
+      -- for words, text in pairs(results.search) do
+        -- send('search ' .. words)
+      -- end 
+      setRoomChar(rooms[roomIdx], '#')  
+      cecho(tostring(rooms[roomIdx]) .. ' setting search char\n')
+    end 
+  else
+    cecho(tostring(rooms[roomIdx]) .. ' not inspected\n')  
+    setRoomEnv(rooms[roomIdx], tfe.environment.uninspected)
+  end    
+  
+  end
+  
+
+end
+
+njs50.showSearchRooms = function()
+
+  local areas = getAreaTable()
+  local areaId = areas[tfe.roomInfo.area .. ' : ' .. tostring(tfe.roomInfo.area_id)]
+
+  local rooms = getAreaRooms(areaId)
+
+
+  for roomIdx = 0, #rooms do
+
+    -- add in searches from map data
+    local results = getRoomUserData(rooms[roomIdx], "inspectResult")  
+    if (results and results ~= "") then
+      results = yajl.to_value(results)
+      if (#results.searchWords &gt; 0) then      
+        for _idx, words in ipairs(table.keys(results.search)) do
+          cecho('#' .. rooms[roomIdx] .. ': search ' .. words .. '\n')
+        end       
+      end 
+    end    
+    
+    -- manual searches
+    results = getRoomUserData(rooms[roomIdx], "manualSearch")  
+    if (results and results ~= "") then
+      results = yajl.to_value(results)
+      if (#results &gt; 0) then        
+        for idx, cmd in ipairs(results) do
+          cecho('#' .. rooms[roomIdx] .. ': ' .. cmd .. '\n')
+        end   
+      end 
+    end       
+    
+  
+  end
+  
+
+end
+
+
+njs50.displayRooms = function()
+
+  local areas = getAreaTable()
+  local areaId = areas[tfe.roomInfo.area .. ' : ' .. tostring(tfe.roomInfo.area_id)]
+
+  local rooms = getAreaRooms(areaId)
+
+  local br = rooms[0]
+  
+  rooms[0] = nil
+  
+  table.insert(rooms, 1, br)
+
+
+  table.sort(rooms)
+
+  local lnum 
+  
+  
+  cecho('\n&lt;white&gt;Rooms in ' .. tfe.roomInfo.area .. '&lt;reset&gt;\n')
+  
+  local str = ''
+  
+  for idx, num in ipairs(rooms) do
+    if (lnum and lnum + 1 ~= num) then
+      str = '&lt;red&gt;'
+    else
+      str = '&lt;green&gt;'  
+    end
+    cecho(str .. '#' .. tostring(num) .. '&lt;reset&gt;: ' .. getRoomName(num) .. '\n')  
+    lnum = num
+  end
+  
+
+end
+
+
+
+njs50.search = function(vnum)
+  
+  vnum = vnum or gmcp.Room.Info.vnum
+  
+  vnum = tostring(vnum)
+  
+  local searches = njs50.roomSearches[vnum]
+  
+  if (searches) then
+    for idx, cmd in ipairs(searches) do 
+      expandAlias(cmd)
+    end
+  end
+  
+  -- add in searches from map data
+  local results = getRoomUserData(tfe.roomInfo.num, "inspectResult")  
+  if (results and results ~= "") then
+    results = yajl.to_value(results)
+    if (#results.searchWords &gt; 0) then
+      cecho('\n&lt;green&gt;MAP&lt;white&gt;: performing searches stored in map data\n')
+      for words, text in pairs(results.search) do
+        for idx, word in ipairs(string.split(words, ', ')) do
+          send('search ' .. word)
+        end
+      end   
+    end 
+  end    
+    
+  -- perform any manually added searches
+  results = getRoomUserData(tfe.roomInfo.num, "manualSearch")  
+  if (results and results ~= "") then
+    results = yajl.to_value(results)
+    if (#results &gt; 0) then
+      cecho('&lt;green&gt;MAP&lt;white&gt;: performing manual searches stored in map data\n')
+      for idx, cmd in ipairs(results) do
+        send(cmd)
+      end   
+    end 
+  end   
+
+end</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>custom searches example</name>
+			<packageName />
+			<script>njs50 = njs50 or {}
+njs50.roomSearches = njs50.roomSearches or {}
+
+
+local customSearches = {
+  
+  ['5117'] = { 
+    "search dung"
+  },
+  
+}
+
+for k, v in pairs(customSearches) do
+  njs50.roomSearches[k] = v
+end</script>
+			<eventHandlerList />
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>timers</name>
+			<packageName />
+			<script>tfe.timeout = tfe.timeout or {}
+tfe.timeout.timers = tfe.timeout.timers or {}
+
+tfe.timeout.create = function(name, timeout, onTimeout)
+  
+  -- kill any existing timer with this name
+  if (tfe.timeout.timers[name]) then
+    cecho('\n\n&lt;red&gt;Timer: &lt;white&gt;created timer with same name as existing timer - ' .. name .. '\n\n')
+    tfe.timeout.kill(name)
+  end
+  
+  tfe.timeout.timers[name] = {
+    timeout = timeout,
+    onTimeout = function()
+      tfe.timeout.timers[name] = nil
+      onTimeout()
+    end    
+  }
+  
+  cecho('\n&lt;green&gt;Timer: &lt;white&gt;created new timer - ' .. name .. '\n')
+  tfe.timeout.refresh(name)  
+  
+end
+
+tfe.timeout.kill = function(name)
+  if (tfe.timeout.timers[name]) then
+    cecho('\n&lt;green&gt;Timer: &lt;white&gt;killed timer - ' .. name .. '\n')
+    if (tfe.timeout.timers[name].timerId) then killTimer(tfe.timeout.timers[name].timerId) end
+  end 
+  tfe.timeout.timers[name] = nil
+end
+
+
+tfe.timeout.suspend = function(name)
+  if (tfe.timeout.timers[name]) then
+    cecho('\n&lt;green&gt;Timer: &lt;white&gt;suspended timer - ' .. name .. '\n')
+    if (tfe.timeout.timers[name].timerId) then killTimer(tfe.timeout.timers[name].timerId) end
+    tfe.timeout.timers[name].timerId = nil
+  end 
+end
+
+tfe.timeout.refresh = function(name)
+  if (tfe.timeout.timers[name]) then    
+    if (tfe.timeout.timers[name].timerId) then
+      cecho('\n&lt;green&gt;Timer: &lt;white&gt;refresh timer - ' .. name .. '\n')
+      if (tfe.timeout.timers[name].timerId) then killTimer(tfe.timeout.timers[name].timerId) end
+    end
+    tfe.timeout.timers[name].timerId = tempTimer(tfe.timeout.timers[name].timeout, tfe.timeout.timers[name].onTimeout) -- , tfe.timeout.timers[name].name    
+  else
+    cecho('\n\n&lt;red&gt;Timer: &lt;white&gt;attempted to refresh non existant timer - ' .. name .. '\n\n')
+  end 
+end
+
+
+
+</script>
+			<eventHandlerList />
+		</Script>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>example-murder-bot</name>
+			<packageName />
+			<script />
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>generic bot things</name>
+				<packageName />
+				<script>njs50bot =  njs50bot or {}
+
+njs50bot.verbose = true
+
+njs50bot.log = function(msg)
+  if (njs50bot.verbose) then
+    cecho(msg)
+  end
+end
+
+njs50bot.isFull = function()
+  
+  if (gmcp.Char.Vitals.maxmv == gmcp.Char.Vitals.mv and 
+      gmcp.Char.Vitals.en == gmcp.Char.Vitals.maxen and 
+      gmcp.Char.Vitals.hp == gmcp.Char.Vitals.maxhp) then
+    return true; 
+  end
+  
+  return false;
+  
+end
+
+
+njs50bot.sleepUntilFull = function (cb)
+  
+  -- if char is full then invoke callback
+  if (njs50bot.isFull()) then
+   
+    njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; character has full moves/en/hp, invoking callback\n')
+    
+    send('stand')
+    
+    cb()
+    
+  else
+  
+    if (gmcp.Char.Status.position == 'standing') then
+      send('sleep')
+    end
+  
+    njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; not full, waiting on gmcp update\n')
+ 
+    -- not full, check again on next gmcp update (or after 5 seconds)
+  
+    local retry = function()
+      njs50bot.log(' &lt;yellow&gt;&lt;- gmcp update (or 5s timeout)\n')
+      njs50bot.sleepUntilFull(cb)
+    end
+    njs50.tempTimedNextEvent(5, 'gmcp.Char.Vitals', retry, retry)
+    
+  end
+
+end
+
+
+njs50bot.getFullAndGo = function(roomNumber, cb)
+  njs50bot.sleepUntilFull(function() 
+    tfe.gotoRoom(roomNumber, function()
+      if (cb) then cb() end
+    end)
+  end)
+end
+
+
+-- kills everything in the room! - this will probably get you dead
+-- probably you should filter the list of things to kill and only kill specific mobs
+
+njs50bot.killAll = function(cb)
+  
+  njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; going to kill everything in this room...\n')
+  
+  local scanFailedTrigger, killNextScanHandler
+  
+  -- when we recieve new scan results, this is what we want to do:
+  killNextScanHandler = njs50.onNextEvent(njs50.scanner.events.SCAN_PROCESSED, function()
+    
+    njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; scan success\n')
+    
+    -- scan succeded so kill the scan fail trigger
+    killTrigger(scanFailedTrigger);
+    
+    -- if nothing is left in the room invoke the callback
+    if (not njs50.scanner.exits['[Here]'] or #njs50.scanner.exits['[Here]'] == 0) then
+      njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; kill all succeded\n')
+      if (cb) then cb() end
+    else
+      
+      -- pick the first thing on scan
+      -- this list might need to be filtered for friendlies. i.e pets, group members
+      local victim = njs50.scanner.exits['[Here]'][1].killString
+      
+      -- define these variables here so they are available inside all the functions we are about to make
+      local victimMissingTrigger, noActionTimer, somethingDiedTrigger
+      
+      local cleanupTempThings = function()
+        if (victimMissingTrigger) then killTrigger(victimMissingTrigger) end
+        if (somethingDiedTrigger) then killTrigger(somethingDiedTrigger) end
+        if (noActionTimer) then killTimer(noActionTimer) end
+      end
+      
+      victimMissingTrigger = tempRegexTrigger([[(The room doesn't contain any beings|Nothing found) matching "]] .. victim .. [["\.$]], function()
+        njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; kill victim missing - scanning again in 5\n')
+        -- failed to find/kill victim
+        cleanupTempThings()
+        tempTimer(5, function() njs50.killAll(cb) end)
+      end, 1)
+      
+      somethingDiedTrigger = tempRegexTrigger([[You receive \d+ experience points\.$]], function()
+        njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; kill victim dead\n')
+        -- failed to find/kill victim
+        cleanupTempThings()
+        njs50bot.killAll(cb)
+      end, 1)
+      
+      noActionTimer = tempTimer(20, function()
+        -- 20 seconds passed without anything dying or being not found. try scanning again
+        njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; kill all timed out, trying again\n')
+        cleanupTempThings()
+        njs50bot.killAll(cb)
+      end)
+      
+      send('kill ' .. victim)
+    end
+    
+  end)
+  
+  
+  scanFailedTrigger = tempRegexTrigger([[The current battle has you occupied\.$]], function()
+    
+    njs50bot.log('\n&lt;green&gt;njs50bot:&lt;white&gt; kill all scan failed due to combat, trying again in 5\n')
+    
+    -- failed to scan due to combat, kill the handler for processing scan results
+    killNextScanHandler()
+    
+    -- try again in 5 seconds
+    tempTimer(5, function()
+      njs50.killAll(cb)
+    end)
+    
+  end, 1)
+  
+
+  murder.scan('kill all scan')
+
+end
+
+njs50bot.checkRepop = function (roomId, regex, callback) 
+
+  local startRoomId = tfe.roomInfo.num
+  
+  local repopped = true
+ 
+  local noRepopTrigger = tempRegexTrigger(regex, function () 
+    repopped = false
+  end, 1)
+
+  -- go to the check room and back to the start 
+  -- makesure timeout is long enough to do this.
+  tfe.gotoRoom(roomId, function()
+    tfe.gotoRoom(startRoomId, function()
+    
+      -- if trigger hasn't run then repop happened
+      if (repopped) then
+        killTrigger(noRepopTrigger)
+        njs50bot.log('\n\n&lt;green&gt;-=[ repopped ]=-\n')
+        callback()
+      else
+        -- no repop
+        local delay = 12 + math.random (1,8)
+        
+        njs50bot.log('\n\n&lt;orange&gt;-=[ no repop, waiting ' .. tostring(delay) .. 's ]=-\n')        
+        
+        tempTimer(delay, function () 
+          njs50bot.checkRepop(roomId, regex, callback)
+        end) 
+             
+      end
+    
+    end)
+  end) 
+  
+
+  
+end
+
+-- runs a function at each step of a path, then the callback when complete
+-- stepFn needs to call a callback when complete to invoke the next step
+
+-- njs50bot.executePath({41750, 41751, 41756, 41758, 41753, 41752}, njs50.killAll, function() send('cheer') end)
+
+njs50bot.executePath = function (path, stepFn, cb)
+ -- 41750, 41751, 41756, 41758, 41753, 41752
+  local currentStep = 0
+  
+  local stepper
+  
+  stepper = function()
+    
+    if (currentStep == #path) then
+      
+      cecho('\n&lt;green&gt;njs50bot:&lt;white&gt; reached end of path\n')
+      if (cb) then cb() end
+      
+    else
+    
+      currentStep = currentStep + 1
+      local destination = path[currentStep]
+      cecho('\n&lt;green&gt;njs50bot:&lt;white&gt; going to ' .. tostring(destination) .. '\n')
+      tfe.gotoRoom(destination, function()
+        stepFn(stepper)
+      end)
+      
+    end
+    
+  end
+ 
+  stepper()
+ 
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>mansion.bot</name>
+				<packageName />
+				<script>njs50bot.mansion = function ()
+    
+  -- gets full then goes to repop then invokes the callback
+  local gotoRepop = function(cb) 
+    njs50bot.getFullAndGo(40582, cb) 
+  end
+  
+  
+  --  gets full, goes to room 41758, murders whatever is in the room, then invokes the callback
+  local firstRoom = function(cb)
+    njs50bot.getFullAndGo(41758, function()
+      njs50bot.killAll(function()
+        njs50bot.log('\n\n&lt;green&gt;SAMPLEBOT:&lt;white&gt; the first room is now clear!\n\n')
+        -- we might want more custom code in here!
+        cb()
+      end)
+    end) 
+  end
+ 
+  -- murders all the things in a room, then sleeps until full hp/mv/en before invoking callback.
+  local genericRoomMurderAll = function(cb)
+     njs50bot.killAll(function()
+      njs50bot.sleepUntilFull(cb)
+    end)  
+  end
+
+  
+  local runComplete = function()
+    njs50bot.log('\n\n&lt;green&gt;SAMPLEBOT:&lt;white&gt; mansion bot completed!\n\n')
+    -- we might start the run again here if this was a real bot, mabye after some delay / loot sorting etc.
+  end
+  
+  
+  njs50bot.log('\n\n&lt;green&gt;SAMPLEBOT:&lt;white&gt; commencing mansion bot!\n\n')
+  
+  gotoRepop(function()
+    
+    njs50bot.checkRepop('41750', [[^\S+ \w+ coins? lies?]], function()
+      
+      -- manual first room
+      firstRoom(function()
+        
+        -- generic path then goes through a list of rooms murdering everything then getting full hp etc before continuing
+        njs50bot.executePath({41750, 41751, 41756, 41758, 41753, 41752}, genericRoomMurderAll, function() 
+        
+          -- leave a copper coin on the floor for the repop check
+           tfe.gotoRoom(41750, function()
+            send('drop copper.coin')
+            
+            -- go back to repop and run the run complete function
+            gotoRepop(runComplete)
+          end) 
+                
+        end) -- end execute path
+        
+      end) -- end first room
+      
+    end) -- end repop check
+    
+  end) -- end goto repop
+  
+end</script>
+				<eventHandlerList />
+			</Script>
+		</ScriptGroup>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>gmcp-events</name>
+			<packageName />
+			<script />
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>tfe.room_info_update</name>
+				<packageName />
+				<script>tfe = tfe or {}
+
+tfe.consts = tfe.consts or {}
+
+tfe.consts.exitmap = {
+    n = 'north',    e = 'east',
+    w = 'west',     s = 'south',
+    u = 'up',       d = 'down',
+	  N = 'north',    E = 'east',
+    W = 'west',     S = 'south',
+    U = 'up',       D = 'down',
+    ["in"] = 'in',  out = 'out',
+    north = 'north',east = 'east',
+    west = 'west',  south = 'south',
+    up = 'up',      down = 'down',
+}
+
+-- only add exits when rooms are initially found
+-- this way fake exits are no readded
+tfe.consts.noRoomExitUpdates = {
+  ["Serene Sunshine"] = true,
+}
+
+
+
+tfe.consts.short = {}
+for k,v in pairs(tfe.consts.exitmap) do
+    tfe.consts.short[v] = k
+end
+
+tfe.consts.standardExits = {
+  north = true,
+  east = true,
+  south = true,
+  west = true,
+  up = true,
+  down = true,
+}
+
+-- for some reason the speed walker doesn't use shorts for up/down
+tfe.consts.exitmap['up'] = 'up'
+tfe.consts.exitmap['down'] = 'down'
+
+tfe.consts.stubmap = {
+    north = 1,      east = 4,
+    west = 5,       south = 6,
+    up = 9,         down = 10,          
+    ["in"] = 11,    out = 12,
+    [1] = "north",  [4] = "east",
+    [5] = "west",   [6] = "south",
+    [9] = "up",     [10] = "down",
+    [11] = "in",    [12] = "out",
+}
+
+-- in case an in/out goes to the same zone send it/down 100 layers so it doesn't overlap with an existing exit
+tfe.consts.coordmap = {
+    [1] = {0,1,0},      [4] = {1,0,0},
+    [5] = {-1,0,0},     [6] = {0,-1,0},
+    [9] = {0,0,1},      [10] = {0,0,-1},
+    [11] = {0,0,100},     [12] = {0,0,-100}
+}
+
+tfe.consts.reverse_dirs = {
+    north = "south", south = "north",
+		west = "east", east = "west",
+		up = "down", down = "up",
+    ["in"] = "out", out = "in",
+}
+
+tfe.resetRoom = function ()
+  tfe.roomInfo = gmcp.Room.Info
+  tfe.previousRoomInfo = tfe.roomInfo
+  tfe.lastMoveDirection = ''
+end
+
+
+tfe.findConnectingRoomsInRange = function(num, minRnum, maxRnum)
+
+  local exitPriority = { 'north', 'east', 'south', 'west', 'up', 'down' }
+  -- getRoomExits()
+  for vnum = minRnum, maxRnum do
+  
+    local exits = getRoomExits(vnum)
+    
+    if (exits) then
+    
+      for idx, exit in pairs(exitPriority) do
+        
+        if (exits[exit] == num) then
+        
+          display(vnum, exits)
+        
+        end
+      
+      end
+    
+    end
+  
+  end
+
+end
+
+tfe.removeDuplicatedExits = function()
+  
+  local exitPriority = { 'north', 'east', 'south', 'west', 'up', 'down' }
+  
+  local foundExits = {}
+  
+  for idx, exit in pairs(exitPriority) do
+  
+    if (gmcp.Room.Info.exits[exit]) then
+      local vnum = gmcp.Room.Info.exits[exit]
+      if (foundExits[vnum] or vnum == gmcp.Room.Info.num) then
+        gmcp.Room.Info.exits[exit] = nil
+        gmcp.Room.Info.exit_info[exit] = nil
+        cecho('\n&lt;red&gt;MAPPER&lt;white&gt;: removed duplicate/fake exit to ' .. exit .. '\n')
+      else
+        foundExits[vnum] = true
+      end
+    
+    end
+    
+  end
+
+end
+
+tfe.updateRoomExits = function()
+  
+  local exits = getRoomExits(gmcp.Room.Info.num)
+  
+  for exit, rnum in pairs(exits) do
+    if (not gmcp.Room.Info.exits[exit]) then
+      cecho('\n\n&lt;orange&gt;MAP:&lt;white&gt; removing missing exit (' .. exit .. ') from map\n')
+      setExit(gmcp.Room.Info.num, -1, exit)
+      setExit(rnum, -1, tfe.consts.reverse_dirs[exit])
+    end
+  end
+
+end
+
+tfe.room_info_update = function()
+  
+  if ((#table.keys(gmcp.Room) == 0) or (#table.keys(gmcp.Room.Info) == 0)) then
+    cecho('\n&lt;yellow&gt;mapper&lt;white&gt;: room updated with no data\n')
+    return
+  end
+  
+-- tfe.flatMapper = 'Mojune'
+-- tfe.showFlatMap = true  
+
+
+  -- fix broken exits in gmcp data.
+  
+  local fixExits = {
+    -- in lag castle, secret exit down
+    ['33357'] = { down = 9053 },
+    ['9053'] = { up = 33357 },
+  }
+
+  local fixExit = fixExits[tostring(gmcp.Room.Info.num)]
+
+  if (fixExit) then
+    cecho('&lt;yellow&gt; &lt;--- &lt;white&gt;fixing a dodgy exit in gmcp data\n')
+    
+    for dir, num in pairs(fixExit) do
+    
+      if (gmcp.Room.Info.exits[dir]) then
+        gmcp.Room.Info.exits[dir] = num
+        gmcp.Room.Info.exit_info[dir].num = num
+        gmcp.Room.Info.exit_info[dir].vnum = num
+      end
+    
+    end
+    
+  
+  end
+
+
+  
+  -- remove any exits that appear more than once. prioritize NESW over UD  
+  tfe.removeDuplicatedExits()
+  
+  
+  
+  local roomChanged = false
+  
+  -- only proceed if there is actually room info
+  if (gmcp.Room.Info.area_id and gmcp.Room.Info.num) then
+    
+    if (tfe.roomInfo) then
+    	
+			-- if we changed rooms update lat move direction and previous room
+			if (tfe.roomInfo.num ~= gmcp.Room.Info.num) then
+			
+        roomChanged = true
+        
+        -- set exit info so we can check when doors open
+        njs50.gmcp.previous.exitInfo = table.deepcopy(gmcp.Room.Info.exit_info)
+        
+        -- reset the scanner as it's possible for a scan to be in progress while
+        -- we are changing rooms.
+        -- this happens if we have a move queued and the previous scan was waiting for
+        -- and empty line/prompt to complete.
+        
+        -- i.e north: some stuff 
+        -- &lt;gmcp room change due to queued move&gt;
+        -- &lt;new line from gmcp update causes scan to complete&gt;
+        if (njs50.scanner.scan_in_progress) then
+          cecho('&lt;yellow&gt; &lt;--- &lt;white&gt;cleared in progress scan\n')
+          njs50.scanner.resetScanner()
+        end
+        -- cecho('&lt;yellow&gt; &lt;--- #' .. tostring(gmcp.Room.Info.num) .. '\n')
+      
+        tfe.previousRoomInfo = tfe.roomInfo
+        tfe.lastMoveDirection = ''
+        
+        if (tfe.previousRoomInfo.num and getRoomExits(tfe.previousRoomInfo.num)) then
+          for exit, vnum in pairs(getRoomExits(tfe.previousRoomInfo.num)) do
+            if (vnum == gmcp.Room.Info.num) then
+              tfe.lastMoveDirection = exit
+              break
+            end
+          end
+        end
+        
+        if (tfe.lastMoveDirection == '') then
+          for exit, vnum in pairs(tfe.roomInfo.exits) do
+            if (vnum == tfe.roomInfo.num) then
+              tfe.lastMoveDirection = tfe.consts.reverse_dirs[exit]
+              break
+            end
+          end
+        end
+        
+        -- if we are badly out of sync set the last room to this room
+        -- if (tfe.lastMoveDirection == '') then
+          -- tfe.previousRoomInfo = gmcp.Room.Info
+          -- tfe.lastMoveDirection = ''
+        -- end
+        
+      else -- room didn't change but room info might have...
+      
+        -- only looking for exit info changes when the room hasn't changed!
+        if (njs50.tableHasValueChanges(gmcp.Room.Info.exit_info, njs50.gmcp.previous.exitInfo)) then
+          cecho('\n&lt;green&gt;mapper&lt;white&gt;: exit change\n')
+          -- cecho('&lt;green&gt; &lt;-- exit info updated ')
+          njs50.gmcp.previous.exitInfo = table.deepcopy(gmcp.Room.Info.exit_info)
+          
+          raiseEvent(njs50.gmcp.events.ROOM_EXITS_UPDATE)
+          
+        end      
+        
+			end -- end if this room is diff from the prev room info room
+
+    else
+    
+      -- first room in this session, set some sane defaults for prev room / direction
+      tfe.previousRoomInfo = gmcp.Room.Info
+      tfe.lastMoveDirection = ''
+
+    end -- end if has room info
+    
+    tfe.roomInfo = gmcp.Room.Info 
+        
+    local areaId, shadowAreaId = tfe.getAreaID(tfe.roomInfo)
+     
+    
+    -- display(areaId)
+    -- shadow room nums will be + 500,000 on regular num
+    
+    -- if existing room center map on it
+    if (not roomExists(tfe.roomInfo.num)) then
+
+      -- adding new room
+      
+      local x = 0; local y = 0; local z = 0;
+      
+      local foundAdjacent = false
+
+      if (tfe.pendingExit ~= nil and not tfe.roomInfo.exits[tfe.pendingExit.direction]) then 
+        -- display(tfe.roomInfo)
+        cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; added special exit from the room ' .. tfe.pendingExit.direction .. '!\n')
+        tfe.roomInfo.exits[tfe.pendingExit.direction] = tfe.pendingExit.vnum
+      end
+
+
+      -- look for an adjacent room
+      for exit, vnum in pairs(tfe.roomInfo.exits) do
+        
+        if (roomExists(vnum)) then
+        
+      		x,y,z = tfe.getRoomCoordinatesByExit(vnum, tfe.consts.reverse_dirs[exit])
+      		-- echo('\nlocation is: ' .. tostring(x) .. ', ' .. tostring(y) .. ', ' .. tostring(z) .. ')\n')
+          foundAdjacent = true
+          
+          break;
+        
+        end
+        
+      end -- end looping over exits
+      
+      
+      
+      if (#getAreaRooms(areaId) &gt; 0 and not foundAdjacent) then
+        cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt; no adjacent room known or other rooms exist in this map!\n')
+        cecho('You can use the "map connect &lt;direction you just went : [n|e|s|w|u|d|in|out]&gt; &lt;command you used to get here&gt;" to connect this room\n\n')
+        display(tfe.previousRoomInfo)
+        return
+      end
+
+      -- echo('\nlocation is: (' .. tostring(x) .. ', ' .. tostring(y) .. ', ' .. tostring(z) .. ')\n')
+
+      addRoom(tfe.roomInfo.num)
+		  setRoomArea(tfe.roomInfo.num, areaId);
+    	  setRoomName(tfe.roomInfo.num, tfe.roomInfo.name)
+    	  setRoomCoordinates(tfe.roomInfo.num, x, y, z)
+
+    end -- end of creating new room
+    
+    
+    -- updating exiting room if we haven't been into it before
+    -- we can tell because it won't have a name yet...
+    if (tfe.roomInfo.name ~= getRoomName(tfe.roomInfo.num)) then
+  	    setRoomName(tfe.roomInfo.num, tfe.roomInfo.name)
+      -- clear the temp room env color (grey)
+      setRoomWeight(tfe.roomInfo.num, 1)
+    end
+    
+    -- fix any area id's that have been mutilated by previous mappers
+    if (getRoomArea(tfe.roomInfo.num) ~= areaId) then
+      setRoomArea(tfe.roomInfo.num, areaId);
+    end
+    
+    
+    -- check terrain in this room
+    local terrain = tfe.environment[tfe.roomInfo.environment]
+    
+    if (not terrain) then
+      cecho('\n&lt;red&gt;MAPPER:&lt;white&gt; missing terrain type! - ' .. tfe.roomInfo.environment .. '\n')
+    end
+    
+    if (terrain and getRoomEnv(tfe.roomInfo.num) ~= terrain) then
+      setRoomEnv(tfe.roomInfo.num, terrain)
+    end
+    
+
+		-- update room exit stubs (may change w/secret doors etc)
+    local existingExits = getRoomExits(tfe.roomInfo.num)
+		
+    for exit, exitInfo in pairs(tfe.roomInfo.exit_info) do
+    
+      -- display('checkin exits...')
+    
+			if(not existingExits[exit] and tfe.consts.short[exit]) then              
+        
+        local bNewRoom = false
+        
+        -- add in a temp room for any rooms we haven't visited yet
+        if (not roomExists(exitInfo.num)) then
+          bNewRoom = true
+          addRoom(exitInfo.num)
+          setRoomArea(exitInfo.num, tfe.getAreaID(exitInfo));
+          setRoomEnv(exitInfo.num, 272)
+          -- set high room weight so we won't auto walk through it unless absolutely necessary
+          setRoomWeight(exitInfo.num, 100)
+          
+          local x,y,z = tfe.getRoomCoordinatesByExit(tfe.roomInfo.num, exit)
+          -- echo('\nnew location is: ' .. tostring(x) .. ', ' .. tostring(y) .. ', ' .. tostring(z) .. ')\n')
+          setRoomCoordinates(exitInfo.num, x, y, z)
+        end
+      
+        -- cecho('\n&lt;green&gt;MAPPER: &lt;white&gt;joining ' .. tostring(tfe.roomInfo.num) ..' to room: ' .. tostring(vnum) .. ' - ' .. exit)
+        
+        -- update exits if this is a new room or not on the no updates list
+        if (bNewRoom or not tfe.consts.noRoomExitUpdates[gmcp.Room.Info.area]) then
+          
+          cecho('\n\n&lt;green&gt;MAP:&lt;white&gt; updating exit (' .. exit .. ')\n')
+          setExitStub(tfe.roomInfo.num, tfe.consts.short[exit], true)
+          setExit(tfe.roomInfo.num, exitInfo.num, tfe.consts.stubmap[exit])          
+          
+          -- set reverse exit
+          if (tfe.roomInfo.area == 'The Ways' and exitInfo.area ~= 'The Ways') then
+            cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; not adding reverse connection to the ways\n')
+          elseif exitInfo.name == "Plains of Elemental Mist" then
+            cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; not adding reverse connection to rooms in the elemental mist\n')
+          else
+            setExit(exitInfo.num, tfe.roomInfo.num, tfe.consts.stubmap[tfe.consts.reverse_dirs[exit]])
+          end
+        else  
+          cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt; not updating exists due to zone: ' .. gmcp.Room.Info.area .. '\n')
+        end
+        
+			end
+    end -- end looping over exits
+    
+    
+    -- duplicate room into shadow zone if it has one
+    if (shadowAreaId) then             
+      
+      
+      local makeShadowCopy = function(roomId, areaId) 
+        local shadowId = roomId + 500000
+        addRoom(shadowId)
+        setRoomArea(shadowId, shadowAreaId);
+        local x, y, z = getRoomCoordinates(roomId)
+        setRoomCoordinates(shadowId, x, y, z)   
+        setRoomChar(shadowId, '*') 
+        setRoomEnv(shadowId, tfe.environment['Shadow Room'])        
+      end
+      
+      tfe.roomInfo.shadowNum = tfe.roomInfo.num + 500000
+      tfe.roomInfo.shadowAreaId = shadowAreaId      
+      
+      -- display(tfe.roomInfo)
+      if (not roomExists(tfe.roomInfo.shadowNum)) then
+        makeShadowCopy(tfe.roomInfo.num, shadowAreaId)        
+      else        
+        
+        -- fix shadow room area id if it's broken
+        if (getRoomArea(tfe.roomInfo.shadowNum) ~= shadowAreaId) then          
+          setRoomArea(tfe.roomInfo.shadowNum, shadowAreaId);
+        end
+        
+         
+      end   
+      
+      -- update exits if required
+      local roomExits = getRoomExits(tfe.roomInfo.num)
+      local shadowExits = getRoomExits(tfe.roomInfo.shadowNum)   
+      
+      for exit, exitNum in pairs(roomExits) do
+        
+        -- update exists if exit room is in the same zone as us and not connected
+        if (not shadowExits[exit] and (getRoomArea(exitNum) == areaId)) then
+                          
+          local linkedRoomId = exitNum + 500000
+          
+          -- create linked room if it doesn't exist
+          if (not roomExists(linkedRoomId)) then
+            makeShadowCopy(exitNum, shadowAreaId)                            
+          end
+        
+          -- join rooms
+          cecho('\n\ngreen&gt;MAP:&lt;white&gt; setting exit (' .. exit .. ')\n')
+          setExit(tfe.roomInfo.shadowNum, linkedRoomId, tfe.consts.stubmap[exit])
+          setExit(linkedRoomId, tfe.roomInfo.shadowNum, tfe.consts.stubmap[tfe.consts.reverse_dirs[exit]])                      
+   
+        end
+      end
+      
+      
+      
+    else -- not a shadow room
+      tfe.roomInfo.shadowNum = nil
+      tfe.roomInfo.shadowAreaId = nil
+    end        
+  
+  	centerview(tfe.roomInfo.num)
+
+    if (roomChanged == true) then
+      tfe.roomInfo.scanned = false
+      if (tfe.supressNextRoomChange) then
+        tfe.supressNextRoomChange = nil
+      else
+        tempRegexTrigger([[^(\|      Exits:|\[Exits:|DARKNESS)]], function()
+          -- cecho('&lt;green&gt; &lt;-- exit') 
+          raiseEvent(tfe.events.ROOM_CHANGED, tfe.roomInfo)
+        end, 1)        
+      end
+    end
+ 
+  else
+  
+    cecho('\n&lt;red&gt;TFE MAP: &lt;white&gt; gmcp room info missing area id or room number\n')
+    display(gmcp.Room.Info)
+    
+  end
+  
+  
+end
+
+tfe.getRoomCoordinatesByExit = function (vnum, dir)
+
+  local x,y,z = getRoomCoordinates(vnum);
+	local dx, dy, dz = unpack(tfe.consts.coordmap[tfe.consts.stubmap[dir]])
+  x = x + dx
+  y = y + dy
+  z = z + dz
+  return x, y, z
+  
+end
+
+tfe.getAreaID = function(roomInfo)
+  
+  if (not roomInfo.area or roomInfo.area == '') then
+    -- display('weird room info: area = ' .. roomInfo.area .. ', id= ' .. tostring(roomInfo.area_id) )
+    roomInfo.area = '???'
+  end
+
+  local area =  roomInfo.area .. ' : ' .. tostring(roomInfo.area_id)
+
+	local areas = getAreaTable()
+  
+  
+  local getId = function(area) 
+    local areaId
+    if (areas[area]) then
+      areaId = areas[area]
+    else
+      cecho('\n&lt;green&gt;TFE MAP: &lt;white&gt;created new area: ' .. area .. '\n')
+      areaId = addAreaName(area)
+    end
+    return areaId
+  end
+  
+  
+  local areaId = getId(area)
+  local shadowAreaId
+  
+  if (tfe.shadowZones[area]) then    
+    shadowAreaId = getId(tfe.shadowZones[area])    
+  end
+  -- display(area, areaId, shadowAreaId)
+  return areaId, shadowAreaId
+
+end
+
+tfe.deleteCurrentMapArea = function ()
+  
+  local areaId = tfe.getAreaID(tfe.roomInfo)
+  deleteArea(areaId)
+  echo('\nRESET CURRENT AREA\n')
+  updateMap()
+
+end
+
+
+tfe.deleteMapAreaByName = function (area)
+    
+  local areas = getAreaTable()  
+  
+  if (areas[area]) then  
+    deleteArea(areas[area])
+    echo('\nRESET AREA - ' .. area .. '\n')
+    updateMap()
+  end
+
+end
+
+tfe.deleteOrphanedRooms = function()
+  
+  for idx, val in ipairs(getAreaRooms(-1)) do
+    deleteRoom(val)
+  end
+
+end
+
+tfe.displayCurrentAreaExits = function ()
+  
+  local areaId = tfe.getAreaID(tfe.roomInfo)
+
+  display( getAreaExits(areaId, true) )
+  
+
+end</script>
+				<eventHandlerList>
+					<string>gmcp.Room.Info</string>
+				</eventHandlerList>
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>gmcp handling</name>
+				<packageName />
+				<script>njs50 = njs50 or {}
+
+njs50.gmcp = njs50.gmcp or {}
+
+njs50.gmcp.events = njs50.gmcp.events or {}
+
+njs50.gmcp.events.ROOM_EXITS_UPDATE = "gmcp: room exits changed"
+
+njs50.gmcp.previous = njs50.gmcp.previous or {}
+
+njs50.gmcp.logLevel = 'errors'
+
+njs50.recursiveDiff = function(t1, t2)
+  -- display('comparing:', t1, t2)
+  local diff = {}
+
+  for idx, key in ipairs(table.keys(t1)) do
+    
+    if t2[key] ~= nil then  
+
+      if (type(t1[key]) == 'table') then
+        diff[key] = njs50.recursiveDiff(t1[key],t2[key])
+      else
+        if t2[key] ~= t1[key] then
+          -- display(key, t2[key], t1[key])
+          diff[key] = t2[key]
+        end
+      end
+
+    else
+      -- not in t2 at all
+      diff[key] = table.deepcopy(t1[key])
+    end
+    
+  end    
+  
+  -- anything left from t2
+  for idx, key in ipairs(table.keys(t2)) do
+    if (t1[key] == nil) then
+      diff[key] = table.deepcopy(t2[key])
+    end
+  end
+  
+  if (#table.keys(diff) == 0) then
+    return nil
+  end
+  
+  return diff
+  
+end
+
+
+njs50.tableHasValueChanges = function(t1, t2) 
+
+  t1 = t1 or {}
+  t2 = t2 or {}
+  
+  local td = njs50.recursiveDiff(t1, t2)
+
+  if (njs50.gmcp.logLevel == 'debug') then
+    cecho('\n&lt;yellow&gt;GMCP:&lt;white&gt; table diff:\n')
+    display(td) 
+    cecho('\n&lt;white&gt;-- end of diff\n')
+  end
+  
+  return (td ~= nil)
+  
+end
+</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>tfe.postMapperInstallHandler</name>
+				<packageName />
+				<script>tfe.postMapperInstallHandler = function(evt, name, file)
+
+  -- after installing the package manager see if there is a package we should install
+  if (name == "tfe-mapper") then   
+    
+    -- uninstall mudlets generic mapper if it is installed
+    if table.contains(getPackages(), 'generic_mapper') then
+      uninstallPackage('generic_mapper')
+    end
+     
+    expandAlias('map help')
+  end
+
+end</script>
+				<eventHandlerList>
+					<string>sysInstallPackage</string>
+				</eventHandlerList>
+			</Script>
+		</ScriptGroup>
+	</ScriptPackage>
+	<KeyPackage />
+	<HelpPackage>
+		<helpURL />
+	</HelpPackage>
+</MudletPackage>
