@@ -686,11 +686,12 @@ njs50pm.packages = njs50pm.packages or {}
   
 njs50pm.packages["tfecat"] = { 
   name = 'tfecat',
-  description = 'better than the tfecat website, and in game!',
-  module = 'tfecat', 
-  branch = 'master',
-  githubPath = '/mudlet/tfecat.module',
-  githubUser = 'njs50',
+  description = 'Milthian custom tfecat',
+  module = 'tfecat',
+  branch = 'main',
+  githubProject = 'Milthian-Mudlet',
+  githubPath = '/packages/tfecat',
+  githubUser = 'twiztidfate',
 }
 
 njs50pm.packages["tfe-mapper"] = { 
