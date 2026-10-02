@@ -30918,16 +30918,31 @@ murder.setLocalNextRoom = function(exit)
   
 end 
 
-murder.autoScan = function ()
-  
-  if (murder.autoScanWatcher) then
+murder.autoScan = function()
+
+  if not tfe or not tfe.events or not tfe.events.ROOM_CHANGED then
+
+    if not murder.autoScanRetryTimer then
+      murder.autoScanRetryTimer = tempTimer(1, function()
+        murder.autoScanRetryTimer = nil
+        murder.autoScan()
+      end, "murder autoscan startup")
+    end
+
+    return
+  end
+
+  if murder.autoScanWatcher then
     killAnonymousEventHandler(murder.autoScanWatcher)
     murder.autoScanWatcher = nil
   end
-  
-  murder.autoScanWatcher = registerAnonymousEventHandler(tfe.events.ROOM_CHANGED, function ()
-    murder.sawAction = false
-  end)
+
+  murder.autoScanWatcher = registerAnonymousEventHandler(
+    tfe.events.ROOM_CHANGED,
+    function()
+      murder.sawAction = false
+    end
+  )
 
 end
 
