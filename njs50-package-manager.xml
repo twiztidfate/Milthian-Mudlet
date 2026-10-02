@@ -695,11 +695,12 @@ njs50pm.packages["tfecat"] = {
 
 njs50pm.packages["tfe-mapper"] = { 
   name = 'tfe-mapper',
-  description = 'a mapper for tfe by njs50',
-  module = 'tfe-mapper', 
-  branch = 'master',
-  githubPath = '',
-  githubUser = 'njs50',
+  description = 'Milthian custom TFE mapper',
+  module = 'tfe-mapper',
+  branch = 'main',
+  githubProject = 'Milthian-Mudlet',
+  githubPath = '/packages/tfe-mapper',
+  githubUser = 'twiztidfate',
 }
 
 njs50pm.packages["njs50-tfe"] = { 
