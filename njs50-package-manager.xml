@@ -714,11 +714,12 @@ njs50pm.packages["njs50-tfe"] = {
 
 njs50pm.packages["njs50-package-manager"] = { 
   name = 'njs50-package-manager',  
-  description = 'this package manager!',
+  description = 'Milthian custom package manager',
   module = 'njs50-package-manager', 
   branch = 'main',
   githubPath = '',
-  githubUser = 'njs50',
+  githubUser = 'twiztidfate',
+  githubProject = 'Milthian-Mudlet',
 }
 
 
