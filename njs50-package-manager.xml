@@ -726,21 +726,15 @@ njs50pm.packages["njs50-package-manager"] = {
 
 
 njs50pm.packages["njs50-common"] = { 
-  
-  module = 'njs50-common', 
-  
-  name = 'njs50-common',    
-  description = 'njs50 shared code',  
-  
-  githubProject = 'njs50-package-manager',  
-  githubUser = 'njs50',
-  githubPath = '/modules',
-    
+  module = 'njs50-common',
+  name = 'njs50-common',
+  description = 'Milthian custom shared code',
+  githubProject = 'Milthian-Mudlet',
+  githubUser = 'twiztidfate',
+  githubPath = '/packages/njs50-common',
   branch = 'main',
   fileType = 'xml',
-  
 }
-
 
 
 
