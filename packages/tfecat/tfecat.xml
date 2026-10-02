@@ -1,0 +1,5858 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>parse equipment</name>
+			<script>catalog.player = catalog.player or {}
+
+local player = catalog.player
+
+player.gear = player.gear or {}
+player.itemSlot = player.itemSlot or {}
+
+if (matches[2] == 'Equipment') then
+	-- start of parsing
+
+	player.gear = {}
+  player.itemSlot = {}
+  
+  player.gearParsing = true
+	-- cecho(' &lt;--- parsing start')
+
+  -- end on next prompt
+  tempPromptTrigger(function()
+    	-- end of parsing
+    	player.gearParsing = nil
+    	player.gearCurrentSlot = nil
+    
+    	raiseEvent(catalog.events.PARSED_EQUIPMENT)
+    	-- cecho(' &lt; --- parsing end')  
+  end, 1)
+
+elseif player.gearParsing then
+
+ 	-- if this line has a slot, get rid of the redundant part and set it to be the current slot
+	if (matches[2] ~= '') then
+		player.gearCurrentSlot = rex.gsub(matches[2], [[^(floating|worn on|worn around|worn about) ]], "", 1)
+	end
+
+	local item = catalog.common.itemSanitize(matches[4], true)
+
+	player.gear[player.gearCurrentSlot] = player.gear[player.gearCurrentSlot] or {}
+	player.gear[player.gearCurrentSlot][matches[3]] = {item = item, raw = matches[4], condition = matches[5] }
+
+	player.itemSlot[item] = {slot=player.gearCurrentSlot, layer=matches[3]}
+
+end
+
+
+
+</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^\s+ \+\+\+ (Equipment) \+\+\+</string>
+				<string>^(.*?)\s+(bottom|under|base|over|top)\s+(.*?)\s+(worthless|damaged|very worn|worn|very scratch|scratched|reasonable|good|very good|excellent|perfect)</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>parse trainer</name>
+			<script>catalog.trainers = catalog.trainers or {}
+
+local skills = {}
+
+-- 
+-- Skill                 Level       Cost       Prac
+-- -----                 -----       ----       ----
+-- humanic                 7 
+-- elvish                 unk           5         2
+-- dwarvish               unk           5         2
+
+-- cecho('&lt;green&gt; &lt;-- &lt;white&gt; inc trainers!')
+
+local skillParser =  tempRegexTrigger([[^([A-Za-z]\D*?)\s+(\d+|unk|Y)\s*\d*?\s+?\d*?\s*$]], function()
+  -- cecho('&lt;green&gt; &lt;-- &lt;white&gt; ' .. matches[2])
+  table.insert(skills, matches[2])
+end)
+
+
+local processSkills = function()
+  -- cecho('&lt;green&gt; &lt;-- &lt;white&gt; trainers done!')
+  killTrigger(skillParser)
+
+  for idx, skill in ipairs(skills) do
+    
+    catalog.trainers[skill] = catalog.trainers[skill] or {}
+    
+    if (not table.contains(catalog.trainers[skill], gmcp.Room.Info.num)) then      
+      table.insert(catalog.trainers[skill], gmcp.Room.Info.num)
+      catalog.debouncedLoadTrainers()
+    end
+      
+  end
+
+end
+
+-- was using prompt trigger but it seems some people have the thing
+-- that makes it work disabled...
+tempRegexTrigger([[^(|&lt;.*)$]], processSkills, 1)
+</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>Skill                 Level       Cost       Prac</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>3</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>parse customs</name>
+			<script>
+local custom
+local customs = {}
+
+local ctrig, ctrig2, ctrig3, ctrig4
+
+-- only pase customs if we saw the copper pieces thing first, so clan messages stop triggering it
+local startParsingTrig = tempBeginOfLineTrigger("Item                        Price  Weight  Lvl  Ingredients", function()
+  
+  local startLine = matches[1]
+  
+  
+  -- full line
+  ctrig = tempRegexTrigger([[^([A-Za-z]\D+?)\s*(\d+)\s+(\d+\.\d+)\s+?(\d+|\*+)\s+([A-Za-z].*)$]], function()
+    if (custom) then
+      customs[custom.name] = custom
+    end
+    custom = {
+      name = matches[2],
+      price = matches[3],
+      weight = matches[4],
+      level = matches[5],
+      ingredients = {matches[6]},
+      raw = matches[1]
+    }
+  end)
+  
+  
+  -- custom name only line
+  ctrig3 = tempRegexTrigger([[^([A-z][a-z]\D+?)\s*$]], function()
+   
+    -- don't trigger on the first line
+    if (matches[2] == startLine) then
+      return
+    end
+   
+    if (custom) then
+      customs[custom.name] = custom
+    end
+    custom = {
+      raw = matches[1],
+      name = matches[2]
+    }
+  end)
+  
+  
+  -- ingrediants by themselves
+  ctrig2 = tempRegexTrigger([[^\s{2,}([A-Za-z].+)$]], function()
+    custom.ingredients = custom.ingredients or {}
+    custom.raw = custom.raw .. '\n' .. matches[1]
+    table.insert(custom.ingredients, matches[2])
+  end)
+  
+  -- custom details only line
+  ctrig4 = tempRegexTrigger([[^(\s{2,})(\d+)\s+(\d+\.\d+)\s+?(\d+|\*+)\s+([A-Za-z].*)$]], function()  
+    custom.price = matches[3]
+    custom.weight = matches[4]
+    custom.level = matches[5]
+    custom.ingredients = {matches[6]}  
+    custom.raw = custom.raw .. '\n' .. matches[1]
+  end)
+
+end, 1)
+
+tempPromptTrigger(function()
+
+
+
+
+
+  if (custom) then
+    customs[custom.name] = custom
+  end
+  
+  killTrigger(startParsingTrig)
+  if (ctrig) then
+    	killTrigger(ctrig)
+    killTrigger(ctrig2)
+    killTrigger(ctrig3)
+    killTrigger(ctrig4)
+  end
+  
+  local key = tostring(gmcp.Room.Info.num)
+  
+  local updatedItems = {}
+  for customName, custom in pairs(customs) do  
+  
+    local catItem = catalog.findItem(custom.name)
+    
+    if (catItem and (not catItem.custom or (catItem.custom and not catItem.custom[key]))) then
+      catItem.custom = catItem.custom or {}
+      
+      local mats = {}
+      
+      for idx, material in ipairs(custom.ingredients) do
+        
+        local fw = rex.match(material, [[^(\S+)]])                
+        
+        local amt = catalog.common.getNumber(fw)
+        
+        if (amt &gt; 1) then
+          material = rex.gsub(material, "^" .. fw .. " ", "")
+        end
+                
+        table.insert(mats, {material = material, amount = amt})
+      
+      end      
+      
+      catItem.datetime = getEpoch()
+      catItem.source = gmcp.Char.Score.name
+      catItem.custom[key] = {
+        ingredients = mats,
+        price = custom.price,
+        raw = custom.raw
+      }      
+      
+      updatedItems[catItem.name] = catItem          
+        
+      cecho('\n&lt;green&gt;CUSTOM:&lt;white&gt; new custom - ' .. custom.name .. ' : ' .. ((catItem and catItem.name and 'in catalog') or 'not found')  ) 
+      
+    end
+    
+    
+  end
+  
+  if (#table.keys(updatedItems) &gt; 0) then
+    catalog.transmit(updatedItems)
+    -- display('items updated:', #updatedItems, updatedItems)
+  end
+  
+  
+    
+end, 1)
+
+</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^Copper Pieces: \d+</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>parse skills</name>
+			<script>-- replicate             unk        1920    8    minor enchantment [7] &amp; continual light [7]
+-- riding                 10
+-- ryoushi               unk          16    5
+-- sword                  14(10)                 dagger [5]
+-- cecho('&lt;green&gt; &lt;--- incoming skills')
+
+-- we will ignore skill bonuses from items
+
+catalog.player = catalog.player or {}
+catalog.player.skills = catalog.player.skills or {}
+local skillParser = tempRegexTrigger([[^(.+?)\s{1,}(\d+|unk|Y)\(?(\d*)\)?\s]], function()
+  
+  local skill = matches[2]
+  local level
+  if (matches[3] == 'unk') then
+    level = 0
+  elseif (matches[3] == 'Y') then
+    level = 10    
+  else
+    if (matches[4] ~= "") then
+      level = tonumber(matches[4])
+    else
+      level = tonumber(matches[3])
+    end
+  end
+  
+  if rex.match(skill,[[unk$]]) then
+    skill = rex.gsub(skill, [[unk$]], '')
+    level = 0
+  end
+  
+  
+  catalog.player.skills[skill] = level
+end)
+
+
+tempPromptTrigger(function()
+  	
+  killTrigger(skillParser)
+  -- display(player.skills)
+  raiseEvent(catalog.events.PARSED_ABILITIES, catalog.player.skills)    
+    
+end, 1)</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^Skill\s+Level\s+Cost\s+Pracs\s+Prerequisites\s*$</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>remorted - reset skills</name>
+			<script>catalog.player = catalog.player or {}
+catalog.player.skills = nil
+catalog.player.stats = nil
+
+catalog.player.gear = {}
+catalog.player.itemSlot = {}</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>You are about to find yourself in the world of the Forest's Edge.</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>2</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>You have nothing equipped.</name>
+			<script>catalog.player = catalog.player or {}
+
+local player = catalog.player
+
+player.gear = {}
+player.itemSlot = {}
+
+player.gearParsing = nil
+player.gearCurrentSlot = nil
+
+raiseEvent(catalog.events.PARSED_EQUIPMENT)
+
+</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>You have nothing equipped.</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>2</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>parse identity</name>
+			<script />
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^\s+Atman:</string>
+				<string>^\s+Race:</string>
+				<string>^\s+Religion:</string>
+				<string>^\s+Kills:</string>
+				<string>^\s+Height:</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+				<integer>1</integer>
+				<integer>1</integer>
+				<integer>1</integer>
+				<integer>1</integer>
+			</regexCodePropertyList>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="yes" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>identity part</name>
+				<script>if #matches then
+  
+  catalog.player = catalog.player or {}
+  catalog.player.identity = catalog.player.identity or {}
+
+  
+  local id = catalog.player.identity
+  
+  id[matches[2]] = matches[3]
+  
+  if #matches &gt;= 8 then
+    id[matches[6]] = matches[7]
+  end
+  if #matches == 12 then
+    id[matches[10]] = matches[11]
+  end
+  
+  
+  if (matches[2] == 'Height') then
+    id.Account = id.Atman
+    id.longAlignment = id.Alignment
+    id.Alignment = rex.gsub(id.longAlignment,[[^(\w).+ (\w).+$]], '%1%2'):upper()
+    raiseEvent(catalog.events.PARSED_IDENTITY, id)    
+  end
+
+end
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand />
+				<packageName />
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile />
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>\s\s(\w+|ID/SN|Recog Char): (.+?)(\s\s|$)</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>look at item</name>
+			<script>
+if (catalog.localItems) then
+  
+  local lItem = catalog.localItems[matches[2]]
+
+  if (lItem) then
+  
+    local item = catalog.items[lItem]
+    
+    if (item) then
+    
+      -- selectCurrentLine()
+      -- creplace('')  
+      -- deselect()
+  
+      -- cecho(item.buffer)
+      cechoLink('&lt;white&gt; &lt;- &lt;green&gt;' .. item.name .. '&lt;reset&gt;', function() catalog.displayItem(item.catalogIndex) end, "display item", true)
+      
+      cecho('\n&lt;green&gt;CATALOG&lt;white&gt;: if the above link is incorrect run "tfecat generate" to rescan your personal catalog\n')
+  
+    else
+      
+      cecho('&lt;white&gt; &lt;- &lt;green&gt; this item is not yet merged into the public catalog\n')
+  
+    end
+    
+  else  
+    
+    cecho('&lt;white&gt; &lt;- &lt;green&gt; you need to run "tfecat generate" to see the id of this item\n')
+    
+  end
+
+end
+
+</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^\[ This is item (\d+) in your catalog.\ \]$</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>You look at ...</name>
+			<script>local item = matches[2]
+
+-- cecho('&lt;white&gt; &lt;- &lt;green&gt; ' .. item .. '\n')
+
+local items = catalog.findItem(item, nil, true)
+
+if items then
+  cecho('\n(')
+  for idx, obj in pairs(items) do
+    
+    cechoLink('&lt;green&gt;' .. obj.name .. '&lt;reset&gt;', function() catalog.displayItem(obj.catalogIndex) end, "display item", true)
+    if idx ~= #items then cecho(', ') end
+    
+  end
+  cecho(')\n')
+  
+end</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^You look at (.+) you are (wearing|wielding|holding|carrying)\.$</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="yes" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>parse player score (stats)</name>
+			<script>if (matches[2] == gmcp.Char.Score.name) then
+  
+  local checkTrigger, checkResistTrigger, finishTrigger, cleanupTrigger
+  
+  local stats = {}
+  
+  
+    -- bleh, for some reason it wont let me have nested capture groups. lame
+  -- made a thing to do this (see resists below) but too lazy to update this one...
+  checkTrigger = tempRegexTrigger([[^\s+(Str):\s+(\d+)[() 0-9]+(Int):\s+(\d+)[() 0-9]+(Wis):\s+(\d+)[() 0-9]+(Dex):\s+(\d+)[() 0-9]+(Con):\s+(\d+)[() 0-9]*$]], function ()        
+    for i=1,5 do
+      stats[matches[2*i]] = tonumber(matches[2*i + 1])
+    end                    
+  end)
+  
+  checkResistTrigger = catalog.common.tempMatchAllRegex([[\s+(Magic|Fire|Cold|Mind|Electric|Acid|Poison):\s+\+?(-?\d+)%]], function ()        
+    for i=1,#matches / 3 do
+      local res = matches[((i-1) * 3) + 2]
+      local val = matches[((i-1) * 3) + 3]      
+      stats[res] = val      
+    end
+  end)
+  
+  
+  finishTrigger = tempRegexTrigger([[\s+\[Also try the command identity for more information.\]$]], function ()
+    
+    killTrigger(checkTrigger)
+    killTrigger(checkResistTrigger)                
+    killTrigger(cleanupTrigger)    
+    catalog.player.stats = stats      
+    raiseEvent(catalog.events.PARSED_SCORE, stats)
+    
+  end, 1)
+  
+   
+  cleanupTrigger = tempPromptTrigger(function()
+    -- ready or not we are done here
+    killTrigger(checkTrigger)
+    killTrigger(checkResistTrigger)
+    killTrigger(finishTrigger)  
+  end, 1)
+  
+end</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand />
+			<packageName />
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile />
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^\s+(\w+)\s*$</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+	</TriggerPackage>
+	<TimerPackage />
+	<AliasPackage>
+		<Alias isActive="yes" isFolder="no">
+			<name>tfecat</name>
+			<script>local commands = {
+
+  generate = function()
+    catalog.export(function(items)
+      catalog.transmit(items)
+    end)
+  end,
+ 
+  ['generate-full'] = function()
+    catalog.export(function(items)
+      catalog.transmit(items)
+    end, {checkEverything = true})
+  end,
+
+  merge = function()
+    catalog.mergeDiff(function()
+      cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; merged!\n\n') 
+    end)    
+  end,
+  
+  load = function()
+    catalog.load(function()
+      cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; loaded ' .. tostring(#catalog.itemsIndex) .. ' items into catalog.items!\n\n') 
+    end)
+  end,  
+
+  loadTrainers = function()
+    catalog.loadTrainers()
+  end,  
+    
+  loadV13 = function()    
+    catalog.load(function()
+      cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; loaded ' .. tostring(#catalog.itemsIndex) .. ' items into catalog.items!\n\n') 
+    end, catalog.serverUrl .. '/catalog')    
+  end,
+  
+  summary = function()
+    catalog.showSummary()
+  end,
+  
+  diff = function()
+    catalog.showDiff()
+  end,
+  
+  refreshItem = function(item)
+    -- item = catalog.items[catalog.itemsIndex[tonumber(item)]]
+    catalog.export(function(items)    
+      catalog.transmit(items)
+    end, {checkEverything = true, searchText = item})
+  end,
+   
+  loadTempItems = function(item)
+    catalog.export(function(items)    
+      catalog.tempItems = items
+    end, {checkEverything = true, searchText = item})  
+  end,
+  
+  update = function()
+    catalog.install()
+  end,
+  
+  
+  help = function()
+    
+    cecho('\n&lt;green&gt;CATALOG:&lt;white&gt; tfe catalog commands:\n\n')
+    cecho('&lt;white&gt;tfecat            &lt;reset&gt;- the help page for searching the catalog\n') 
+    cecho('&lt;white&gt;tcat              &lt;reset&gt;- the help page for searching the catalog\n') 
+    cecho('&lt;white&gt;tcat-audit        &lt;reset&gt;- the help page for looking for upgrades for your character\n\n') 
+    cecho('&lt;white&gt;tfind &lt;skill&gt;     &lt;reset&gt;- find trainers for this skill\n\n')
+    
+    cecho('&lt;white&gt;tcat help weighted&lt;reset&gt;- View the help about weighted search/audit\n')
+     
+    cecho('&lt;white&gt;tfecat generate &lt;reset&gt;- uploads any items missing in the main catalog\n') 
+
+    cecho('&lt;white&gt;tfecat load         &lt;reset&gt;- refreshes the current catalog data for use by tcat\n')
+    cecho('&lt;white&gt;tfecat loadTrainers &lt;reset&gt;- refreshes the trainer data for use by tcat\n\n')    
+    
+    cecho('&lt;white&gt;tfecat summary  &lt;reset&gt;- list the number of contributions from each account\n\n') 
+    
+    cecho('&lt;green&gt;njs50pm:&lt;white&gt; njs50pm update tfecat - update this package!\n\n') 
+  end,
+
+
+
+
+}
+
+local cmd = matches[2]
+local param = matches[3]
+
+if (commands[cmd]) then
+  commands[cmd](param)
+else
+  if (cmd and cmd ~= '') then
+    cecho('\n\n&lt;orange&gt;CATALOG:&lt;white&gt; unknown command ' .. cmd .. '!\n') 
+  end
+  commands.help()
+end</script>
+			<command />
+			<packageName />
+			<regex>^tfecat ?(\S*) ?(.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>tfecat search (tcat)</name>
+			<script>
+-- load items if not already loaded
+
+if (not catalog.itemsIndex or #catalog.itemsIndex == 0) then
+  cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;loading items from server... please hold\n\n')
+  local cmd = matches[1]
+  catalog.load(function()
+    expandAlias(cmd)
+  end)
+  return
+end
+
+if matches[2] == ' help' then
+  cecho('&lt;green&gt;SYNTAX\n')
+  cecho('\n')
+  cecho('&lt;white&gt;tcat&lt;reset&gt;               - View the contents of your catalog\n')
+  cecho('&lt;white&gt;tcat #&lt;reset&gt;             - View the catalog entry specified\n')
+  cecho('&lt;white&gt;tcat &lt;text&gt;&lt;reset&gt;        - Search your catalog for names containing &lt;text&gt;\n')
+  cecho('&lt;white&gt;tcat -b [#]&lt;reset&gt;        - View your catalog or an entry with the unidentified name\n')
+  cecho('&lt;white&gt;tcat help weighted&lt;reset&gt; - View the help about weighted search/audit\n')
+  cecho('\n')
+  cecho('&lt;green&gt;SEARCH OPTIONS\n')
+  cecho('\n')
+  cecho('&lt;white&gt;-l #[-#]&lt;reset&gt;               Show items that are level #, or between # and #\n')
+  cecho('&lt;white&gt;-a &lt;affect&gt;&lt;reset&gt;            Show items with the affect or property specified\n')
+  cecho('&lt;white&gt;-a "&lt;affect&gt;"&lt;reset&gt;          Show items with the affect or property specified\n')
+  cecho('&lt;white&gt;-a &lt;affect&gt;.lt.#&lt;reset&gt;       Show items with the affect specified of less than #\n')
+  cecho('&lt;white&gt;-a &lt;affect&gt;.gt.#&lt;reset&gt;       Show items with the affect specified of more than #\n')
+  cecho('&lt;white&gt;-w &lt;location&gt;&lt;reset&gt;          Show items that are worn in specified location\n')
+  cecho('&lt;white&gt;-w &lt;location&gt;.&lt;layer&gt;&lt;reset&gt;  Show items that are worn in specified location and layer\n')
+  cecho('&lt;white&gt;-p &lt;layer&gt;&lt;reset&gt;             Show items that are worn on specified layer.\n')
+  
+  cecho('&lt;white&gt;-A &lt;alignment&gt;&lt;reset&gt;         Show items that can be used by the alignment specified\n')
+  cecho('&lt;white&gt;-c &lt;class&gt;&lt;reset&gt;             Show items that can be used by the class specified\n')
+  cecho('&lt;white&gt;-g &lt;gender&gt;&lt;reset&gt;            Show items that can be used by the class specified\n')
+  cecho('&lt;white&gt;-r &lt;race&gt;&lt;reset&gt;              Show items that can be used by the race specified\n')
+  
+  -- cecho('-f &lt;flag&gt;     Show items that have the specified anti-flag\n')
+  -- cecho('-r &lt;flag&gt;     Show items that have the specified restriction flag\n')
+  -- cecho('-m &lt;flag&gt;     Show items that have the specified material flag\n')
+  
+  cecho('&lt;white&gt;-t &lt;type&gt;&lt;reset&gt;              Show items that are of the specified type\n')
+  cecho('&lt;white&gt;-W &lt;class&gt;&lt;reset&gt;             Show weapons of the specified weapon class\n')
+  cecho('&lt;white&gt;-d #&lt;reset&gt;                   Show weapons with an average dps of at least #\n')  
+  
+  
+  cecho('&lt;white&gt;--main-hand&lt;reset&gt;            Show one-handed weapons usable in right hand\n')  
+  cecho('&lt;white&gt;--off-hand&lt;reset&gt;             Show off-hand weapons only\n')  
+  cecho('&lt;white&gt;--two-handed&lt;reset&gt;           Show two-handed weapons only\n') 
+  cecho('&lt;white&gt;--after &lt;yyyy-mm-dd&gt;&lt;reset&gt;   Show items found after date\n')
+  cecho('&lt;white&gt;--days #&lt;reset&gt;               Show items added within # days\n')
+  cecho('&lt;white&gt;--limit #&lt;reset&gt;              Limit how many results are shown (default: 10)\n') 
+  
+  cecho('\n') 
+  cecho('&lt;green&gt;SEARCH EXAMPLES\n')
+  cecho('\n')
+  
+  cecho('Find all items between levels 1 and 20 that affect hit regen and go on the\n')
+  cecho('body.base slot:\n')
+  cecho('tcat -l 1-20 -a hit_regen -w body.base\n')
+  cecho('\n')
+  
+  
+  cecho('Find all items between levels 1 and 50 that reduce your wisdom:\n')
+  cecho('tcat -l 1-50 -a wisdom.lt.0\n')
+  cecho('\n')  
+  -- 
+  cecho('Find all items that go in the hand slot and increase mana_regen for an ogre druid:\n')
+  cecho('tcat -a mana_regen.gt.0 -w hands -c druid -r ogre\n')
+  cecho('\n')
+  
+  cecho('Find all items that grant water breathing:\n')
+  cecho('tcat -a "grants the ability to breathe underwater."\n')
+  cecho('\n')
+  
+  cecho('look for swords a thief can backstab with:\n')
+  cecho('tcat -W sword -a "Useful for backstabbing." -c thief\n')
+  cecho('\n')  
+    
+  cecho('Find all axe weapons between levels 1 and 40 with a dps of at least 10:\n')
+  cecho('tcat -W axe -l 1-40 -d 10\n')
+  cecho('\n') 
+  
+  
+  cecho('&lt;green&gt;OPTION DETAILS\n') 
+  cecho('\n') 
+
+  cecho('&lt;white&gt;Affects (-a):&lt;reset&gt; hit_points, hit_regen, mana_points, mana_regen, move_points,\n') 
+  cecho('move_regen, strength, intelligence, wisdom, dexterity, constitution, magic,\n') 
+  cecho('fire, cold, electricity, mind, acid, age, hitroll, damroll, smart, regen, resist\n') 
+  cecho('\n') 
+  
+  cecho('&lt;white&gt;Wear Locations (-w):&lt;reset&gt; finger, neck, body, head, legs, feet, hands, arms, waist,\n') 
+  cecho('wrist, right_hand, left_hand, float_nearby, horse_body, horse_back, horse_foot\n') 
+  cecho('\n') 
+  
+    
+  cecho('&lt;white&gt;Wear Layers (-p):&lt;reset&gt; bottom, under, base, over, top\n') 
+  cecho('\n') 
+-- 
+-- Anti-Flags (-f): anti-human, anti-elf, anti-gnome, anti-dwarf, anti-halfling,
+-- anti-ent, anti-centaur, anti-lizardman, anti-ogre, anti-troll, anti-orc, anti-
+-- goblin, anti-vyan, anti-mage, anti-cleric, anti-thief, anti-warrior, anti-
+-- paladin, anti-ranger, anti-druid, anti-monk, anti-bard, anti-male, anti-
+-- femaile, anti-good, anti-evil, only-good-evil, anti-lawful, anti-chaotic,
+-- only-law-chaos
+
+  cecho('&lt;white&gt;Item Types (-t):&lt;reset&gt; scroll, wand, weapon, armor, potion, key, other\n') 
+  cecho('\n') 
+  
+  cecho('&lt;white&gt;Weapon Classes (-W):&lt;reset&gt; axe, bow, club, dagger, mace, polearm, spear, staff,\n') 
+  cecho('sword, whip, unarmed\n') 
+  cecho('\n') 
+  
+  cecho('&lt;white&gt;Aligntments (-A):&lt;reset&gt; CE, CG, CN, LE, LG, LN, NE, NG, PN\n') 
+  cecho('\n') 
+  
+  return
+end
+
+local results, affect
+local searchString = matches[2]
+local repeatSearchString = rex.gsub(matches[2], [[ --limit \d+]], '')
+
+
+local rawQuery = rex.match(searchString, [[( --raw)]])
+if (rawQuery) then
+  searchString = rex.gsub(searchString, rawQuery, '')
+end  
+
+
+local debugWeightQuery = rex.match(searchString, [[( --debug-weight)]])
+if (debugWeightQuery) then
+  searchString = rex.gsub(searchString, debugWeightQuery, '')
+end  
+
+
+local affectQuery, affect = rex.match(searchString, [[( -a (".+?"|\w+))]])
+if (affectQuery) then
+  affect = rex.gsub(affect, [[^"(.*)"$]], '%1')
+  if (affect == 'weighted') then
+    debugWeightQuery = true
+  end
+end
+
+
+-- this needs to be last as missing will skip the regular search
+
+
+local missingQuery = rex.match(searchString, [[( --missing)]])
+if (missingQuery) then
+
+  if not catalog.localItems then
+    catalog.export(function(items)
+      catalog.transmit(items, function()
+        expandAlias('tcat --missing')
+      end)
+    end)  
+    return
+  end
+
+  searchString = rex.gsub(searchString, missingQuery, '')
+  results = catalog.showMissingLocalItems()
+  affect = 'source'
+else
+  results, affect = catalog.search(searchString)
+end  
+
+
+
+
+
+if (#results == 0) then
+
+  cecho('\n&lt;red&gt;TFECAT:&lt;white&gt; no items found\n\n')
+  
+elseif (#results == 1) then
+
+  if (rawQuery) then
+    display(catalog.items[catalog.itemsIndex[results[1]]])
+  else
+    catalog.displayItem(results[1], debugWeightQuery)    
+  end
+
+else
+    
+  cecho('Number Name                                                Level  Type\n')
+  cecho('------ ----                                                -----  ----\n')
+  
+  for zidx, idx in ipairs(results) do
+  
+    local item = catalog.itemsIndex[idx]
+    local data = catalog.items[item]
+  
+    local vnum = '[' .. demonnic:cfText('&lt;green&gt;' .. tostring(idx) .. '&lt;reset&gt;', {alignment="right", width=4, nogap=true}) .. ']'
+    
+    cechoLink(vnum, function() catalog.displayItem(idx, debugWeightQuery) end, "display item", true)
+    if (useUnIDnameSearch) then
+      cecho(' ' .. demonnic:cfText(string.sub(data['Unidentified Name'], 1, 50), {alignment = "left", width = 50, nogap=true}) .. ' ')
+    else    
+      cecho(' ' .. demonnic:cfText(string.sub(data.name, 1, 50), {alignment = "left", width = 50, nogap=true}) .. '')
+    end
+    
+    cecho(demonnic:cfText(tostring(data.Level) .. '  ', {alignment = "right", width = 8, nogap=true}) .. ' ')
+    cecho(demonnic:cfText(tostring(data.itemType), {alignment = "left", width = 8, nogap=true}) .. ' ')    
+    
+    local renderWeap = function(data)
+      cecho( string.format("%.1f", catalog.getAffect(data, 'damroll') or 0) .. ' dps'  .. 
+      ' (' .. string.format("%.2f", data.Weight) .. 'lb, ')
+      
+      if (catalog.hasAffect(data, 'Requires two hands.')) then
+        cecho('2h ')
+      end
+      
+      cecho(data.Class .. ')') 
+    end
+    
+    local renderSkills = function(data)
+      local skills = {}  
+      
+      if (player and player.skills) then
+        for idx, aff in ipairs(data.affects) do
+          laff = aff.name:lower()
+          if player.skills[laff] and player.skills[laff] &gt; 0 then
+            table.insert(skills, laff)
+          end          
+        end
+      end
+      cecho(table.concat(skills, ', '))
+    end
+    
+    if (affect) then
+      
+      if (affect == 'skills') then
+        renderSkills(data)
+      elseif (affect == 'source') then
+        cecho('source: ' .. data.source)
+      elseif (data.itemType == 'weapon' and affect == 'damroll') then        
+        renderWeap(data)
+      else
+        cecho(affect .. ': ' .. tostring(catalog.getAffect(data, affect)))
+      end
+    elseif (data.itemType == 'weapon') then     
+      renderWeap(data)
+    elseif (data.itemType == 'armor') then
+      cecho('AC: ' .. tostring(data["Armor Class"]))
+    end
+    
+    cecho('\n')
+    
+  end
+  
+  if (results.limit and results.totalCount and results.totalCount &gt; results.limit) then
+    cecho ('\nDisplaying ' .. tostring(#results) .. ' of ' .. tostring(results.totalCount) .. ' items ')
+    cechoLink('[&lt;green&gt;show all&lt;reset&gt;]', function() expandAlias('tcat ' .. repeatSearchString .. ' --limit ' .. tostring(results.totalCount)) end, "show all items", true)
+    cecho('\n')
+  else
+    cecho ('\nFound ' .. tostring(#results) .. ' items\n')
+  end
+  
+end
+
+</script>
+			<command />
+			<packageName />
+			<regex>^tcat( .*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>tcat-audit</name>
+			<script>
+
+if (not (catalog and catalog.player and catalog.player.identity and catalog.player.identity.Race)) then
+
+  local params = matches[2]
+
+  cecho('\n&lt;red&gt;TFECAT: &lt;white&gt;identity has not yet been parsed\n\n')
+  
+  catalog.getIdentity(function()
+    expandAlias('tcat-audit' .. params)  
+  end) 
+   
+  return
+  
+end
+
+
+
+
+if matches[2] == ' help' or matches[2] == '' then
+  cecho('&lt;green&gt;SYNTAX\n')
+  cecho('\n')
+  cecho('&lt;white&gt;tcat-audit&lt;reset&gt;         - View the contents of this help file\n')
+  cecho('&lt;white&gt;tcat-audit help&lt;reset&gt;    - View the contents of this help file\n')
+  cecho('&lt;white&gt;tcat help weighted&lt;reset&gt; - View the help about weighted search/audit\n')
+  cecho('\n')
+  
+  cecho('&lt;green&gt;REQUIRED PARAMETERS\n')
+  cecho('&lt;white&gt;-a &lt;affect&gt;&lt;reset&gt;            The property/affect to focus the audit on\n')
+  cecho('&lt;white&gt;-a "&lt;affect&gt;"&lt;reset&gt;          The property/affect to focus the audit on\n')
+  cecho('\n')
+  
+  cecho('&lt;green&gt;OPTIONAL PARAMETERS\n')
+  cecho('&lt;white&gt;-w &lt;location&gt;&lt;reset&gt;          Only check items in the specified location\n')
+  cecho('&lt;white&gt;-w &lt;location&gt;.&lt;layer&gt;&lt;reset&gt;  Only check items in the specified location and layer\n')
+  cecho('&lt;white&gt;-p &lt;layer&gt;&lt;reset&gt;             Only check items in the specified layer.\n')
+  cecho('&lt;white&gt;--verbose&lt;reset&gt;              Show slots even where upgrades are not found.\n')
+  cecho('&lt;white&gt;--sidegrades&lt;reset&gt;           Show possible sidegrades.\n')
+  cecho('&lt;white&gt;--limit #&lt;reset&gt;              Show a maximum of # results for each slot. (default 10)\n')
+ 
+  cecho('\n') 
+  cecho('&lt;green&gt;EXAMPLES\n')
+  cecho('\n')
+  
+  cecho('Look for energy regen items:\n')
+  cecho('tcat-audit -a mana_regen\n')
+  cecho('\n')
+  
+    
+  cecho('Look for damroll items (including items with the same damroll as what is currently equipped):\n')
+  cecho('tcat-audit -a damroll --sidegrades\n')
+  cecho('\n')
+  
+  
+  cecho('look for head slot items that increase intelligence:\n')
+  cecho('tcat-audit -a intelligence -w head\n')
+  cecho('\n')  
+  
+  
+  cecho('&lt;green&gt;OPTION DETAILS\n') 
+  cecho('\n') 
+
+  cecho('&lt;white&gt;Affects (-a):&lt;reset&gt; hit_points, hit_regen, mana_points, mana_regen, move_points,\n') 
+  cecho('move_regen, strength, intelligence, wisdom, dexterity, constitution, magic,\n') 
+  cecho('fire, cold, electricity, mind, acid, age, hitroll, damroll\n') 
+  cecho('\n') 
+  
+  cecho('&lt;white&gt;Wear Locations (-w):&lt;reset&gt; finger, neck, body, head, legs, feet, hands, arms, waist,\n') 
+  cecho('wrist, right_hand, left_hand, float_nearby\n') 
+  cecho('\n') 
+  
+    
+  cecho('&lt;white&gt;Wear Layers (-p):&lt;reset&gt; bottom, under, base, over, top\n') 
+  cecho('\n') 
+
+  
+  return
+end
+
+
+if (not catalog.itemsIndex or #catalog.itemsIndex == 0) then
+  cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;loading items from server... please hold\n\n')
+  local cmd = matches[1]
+  catalog.load(function()
+    expandAlias(cmd)
+  end)
+  return
+end
+
+
+local searchString = matches[2]
+local affect
+local slots = catalog.common.slots
+local layers = catalog.common.layers
+
+local itemLocationQuery, location, layer = rex.match(searchString, [[( -w (\w+)\.?(\w*))]])
+if (itemLocationQuery) then
+  if table.contains(catalog.slotConversion, location) then
+    
+    if location == 'wrist' then
+      slots = { 'left wrist', 'right wrist' }
+    elseif location == 'left_hand' then
+      slots = { 'left hand' } 
+    elseif location == 'right_hand' then
+      slots = { 'right hand' } 
+    elseif location == 'float_nearby' then
+      slots = { 'nearby' }      
+    elseif location == 'finger' then
+     slots = { 'left hand finger', 'right hand finger' }
+    else
+      slots = { location }
+    end
+  end
+  if table.contains(layers, layer) then
+    layers = { layer }
+  end
+  searchString = rex.gsub(searchString, itemLocationQuery, '')
+end
+
+local itemLayerQuery, xlayer = rex.match(searchString, [[( -p (\w+))]])
+if (itemLayerQuery) then
+  if table.contains(layers, xlayer) then
+    layers = { xlayer }
+  end
+  searchString = rex.gsub(searchString, itemLayerQuery, '')
+end 
+
+local affectQuery, affect = rex.match(searchString, [[( -a (".+?"|\w+))]])
+if (affectQuery) then
+  affect = rex.gsub(affect, [[^"(.*)"$]], '%1')
+  searchString = rex.gsub(searchString, affectQuery, '')
+end
+
+
+local levelQuery, levelLimit = rex.match(searchString, [[( -l (\d+))]])
+if (levelQuery) then  
+  searchString = rex.gsub(searchString, levelQuery, '')
+else
+  levelLimit = gmcp.Char.Score.level
+end
+
+
+local alignQuery, alignment = rex.match(searchString, [[( -A (\w\w))]])
+if (alignQuery) then
+  searchString = rex.gsub(searchString, alignQuery, '')
+else
+  alignment = catalog.player.identity.Alignment  
+end
+
+  
+local classQuery, class = rex.match(searchString, [[( -c (\w+))]])
+if (classQuery) then  
+  searchString = rex.gsub(searchString, classQuery, '')
+else
+  class = gmcp.Char.Score.class
+end
+
+local genderQuery, gender = rex.match(searchString, [[( -g (\w+))]])
+if (genderQuery) then
+  searchString = rex.gsub(searchString, genderQuery, '')
+else
+  gender = catalog.player.identity.Sex
+end
+
+local raceQuery, race = rex.match(searchString, [[( -r (\w+))]])
+if (raceQuery) then
+  searchString = rex.gsub(searchString, raceQuery, '')
+else
+  race = catalog.player.identity.Race
+end
+
+
+
+
+local limitResults = 10
+local limitQuery, limitString = rex.match(searchString, [[( --limit (\d+))]])
+if (limitQuery) then
+  limitResults = tonumber(limitString)
+  searchString = rex.gsub(searchString, limitQuery, '')
+end  
+
+local verboseQuery = rex.match(searchString, [[( --verbose)]])
+if (verboseQuery) then
+  searchString = rex.gsub(searchString, verboseQuery, '')
+end
+
+local sidegradeQuery = rex.match(searchString, [[( --sidegrades)]])
+if (sidegradeQuery) then
+  searchString = rex.gsub(searchString, sidegradeQuery, '')
+end
+if (affect == 'skills') then
+  sidegradeQuery = true
+end
+
+
+if (not affect or affect == '') then
+  cecho('\n&lt;red&gt;TFECAT: &lt;white&gt;an affect must be specified with tcat-audit -a to perform an audit\n\n')
+  return
+end
+
+
+local mainWeapType
+
+local usingTwoHandedWeapon = false
+if catalog.player.gear["right hand"] and catalog.player.gear["right hand"].base then
+  local mWeap = catalog.getSlotLayerItem('right_hand', 'base', catalog.player.gear["right hand"].base.raw)
+  if mWeap and mWeap.itemType == 'weapon' then
+    mainWeapType = mWeap.Class
+    if mWeap and catalog.hasAffect(mWeap, 'Requires two hands.') then
+      usingTwoHandedWeapon = true
+    end
+  end
+end
+
+local offWeapType
+local usingOffHandWeapon = false
+if catalog.player.gear["left hand"] and catalog.player.gear["left hand"].base then
+  local oWeap = catalog.getSlotLayerItem('left_hand', 'base', catalog.player.gear["left hand"].base.raw)
+  if oWeap and oWeap.itemType == 'weapon' then
+    offWeapType = oWeap.Class
+    usingOffHandWeapon = true
+  end
+end
+
+local weightedQuery = nil
+if (affect and affect == 'weighted') then
+  weightedQuery = true
+end
+
+-- display('weapon 2h/oh', usingTwoHandedWeapon, usingOffHandWeapon)
+
+
+
+
+catalog.getSkills(function()
+
+  catalog.getStats(function(stats) 
+  
+    -- display('stats are:', stats)
+  
+    catalog.common.onNextEvent(catalog.events.PARSED_EQUIPMENT, function()
+    
+      local baseQuery = ' -c ' .. class .. ' -l 1-' .. tostring(levelLimit) ..
+                        ' -g ' .. gender .. ' -r ' .. race .. 
+                        ' -A ' .. alignment .. ' --limit ' .. tostring(limitResults)
+    
+      local failItems = ''
+      
+      local gearTotal = 0
+    
+      cecho('\n\n&lt;green&gt;TCAT:&lt;white&gt; audit results for ' .. affect .. '\n')
+    
+    
+      local itemHasNegativeAffect = function(idx) 
+        local item = catalog.itemsIndex[idx]
+        local data = catalog.items[item]  
+        if (affect) then
+          local amt = catalog.getAffect(data, affect, nil, stats)
+          -- display(item, amt)
+          if (amt &lt; 0) then 
+            return true
+          end
+        end
+        
+        return false  
+      end
+    
+      local displayItem = function(idx, isEquipped, includeAverageDamage)
+      
+        local item = catalog.itemsIndex[idx]
+        local data = catalog.items[item]
+           
+        local lcolor = '&lt;green&gt;'            
+        if (isEquipped) then
+          lcolor = '&lt;red&gt;'  
+        end           
+                    
+        local vnum = '[' .. demonnic:cfText(lcolor .. tostring(idx) .. '&lt;reset&gt;', {alignment="right", width=4, nogap=true}) .. ']'
+        cechoLink(vnum, function() catalog.displayItem(idx, weightedQuery) end, "display item", true)
+    
+        cecho(' ' .. demonnic:cfText(string.sub(data.name, 1, 50), {alignment = "left", width = 50, nogap=true}) .. '')
+    
+        if (affect) then
+          local amt = catalog.getAffect(data, affect, nil, stats)
+          
+          cecho(demonnic:fText('level ' .. tostring(data.Level), {alignment = "left", width = 8, nogap=true}) .. ', ')
+                
+          local amt_msg = affect .. ' is ' .. tostring(amt) .. '&lt;reset&gt;'
+          
+          if (amt &lt; 0) then 
+            amt_msg = '&lt;red&gt;' .. amt_msg 
+          end
+          
+          if affect == 'skills' then
+            local skills = {}
+            
+            
+            for idx, aff in ipairs(data.affects) do
+              laff = aff.name:lower()
+              if player.skills[laff] and player.skills[laff] &gt; 0 then
+                table.insert(skills, laff)
+              end          
+            end
+            
+            if (#skills &gt; 0) then
+              amt_msg = 'skills: ' .. table.concat(skills, ', ')
+            else
+              amt_msg = ''
+            end
+            
+          
+          end
+          
+          
+          cecho(amt_msg)
+          
+        end
+        
+        cecho('\n')          
+      end    
+    
+      
+    
+      for sidx, slot in ipairs(slots) do 
+        local skipSlot = false
+        
+        if (usingTwoHandedWeapon and slot == 'left hand') then
+          skipSlot = true
+        end
+      
+        for lidx, layer in ipairs(layers)  do 
+        
+          local skipLayer = false
+          local includeAverageDamage = false
+        
+          -- display(slot, layer)
+    
+          local amt = 0
+          local emptySlot = false
+          local slotMessage = ''
+          local tcatItem, tcatItemAltSide, isAltItemAdditive
+          
+          local cmd = baseQuery .. ' -w ' .. catalog.slotConversion[slot] .. '.' .. layer
+          
+          if ((usingOffHandWeapon or usingTwoHandedWeapon) and slot == 'right hand' and layer ~= 'base') then
+            skipLayer = true
+          end   
+          
+          if (slot == 'right hand') then
+            if (layer == 'base') then
+              if (mainWeapType) then
+                cmd = cmd .. ' -W ' .. mainWeapType
+              end
+              if usingTwoHandedWeapon then
+                 cmd = cmd .. ' --two-handed'            
+              else
+                cmd = cmd .. ' --main-hand'
+              end
+            else
+              skipLayer = true
+            end
+          end     
+          
+          if (usingOffHandWeapon and slot == 'left hand') then
+            if (layer == 'base') then
+              cmd = cmd .. ' -W ' .. offWeapType
+            else
+              skipLayer = true
+            end
+          end     
+          
+          if usingTwoHandedWeapon and slot == 'left hand' then
+             skipLayer = true
+          end
+    
+          
+          if (not usingOffHandWeapon and slot == 'left hand') then
+            if (layer == 'base') then
+               cmd = cmd .. ' -t other'
+            end
+          end     
+            
+    
+          if not (skipSlot or skipLayer) then
+          
+            if catalog.player.gear[slot] and catalog.player.gear[slot][layer] then
+            
+              local thisItem = catalog.player.gear[slot][layer].raw
+              tcatItem = catalog.getSlotLayerItem(slot, layer, thisItem)
+                        
+              if (not tcatItem) then
+                slotMessage = '&lt;orange&gt;Unable to locate item in catalog - ' .. thisItem 
+              else              
+                amt = catalog.getAffect(tcatItem, affect, nil, stats)
+              end
+              
+            else 
+              slotMessage = '&lt;yellow&gt;nothing equipped'
+              emptySlot = true
+            end -- end if this slot has an item...
+    
+            
+            if (affect) then 
+              if (sidegradeQuery) then
+                cmd = cmd .. ' -a "' .. affect .. '".gte.' .. tostring(amt)
+              else           
+                cmd = cmd .. ' -a "' .. affect .. '".gt.' .. tostring(amt)
+              end
+            end
+            
+            
+            -- display('cmd: ' .. cmd)
+            
+            
+            if (tcatItem) then
+              gearTotal = gearTotal + catalog.getAffect(tcatItem, affect, true, stats)
+            end
+            
+            -- display(cmd)  
+            
+            
+            local results = catalog.search(cmd, stats)
+            
+            -- display(cmd, results)
+            
+            -- remove any duplicate items from results where affects are not additive.
+            -- ie bracers etc that you can only wear one of
+              
+            local altSlotIdx  
+              
+            if (#results &gt; 0 and rex.find(slot, [[^(left|right) ]]) == 1) then
+     
+              if slot:find('left') then
+                altSlot = slot:gsub('left', 'right')
+              else
+                altSlot = slot:gsub('right', 'left')
+              end
+              
+              if catalog.player.gear[altSlot] and catalog.player.gear[altSlot][layer] then      
+                local altItem = catalog.player.gear[altSlot][layer].raw
+                tcatItemAltSide = catalog.getSlotLayerItem(altSlot, layer,  altItem)
+                if (tcatItemAltSide) then 
+                  isAltItemAdditive = catalog.hasAffect(tcatItemAltSide, 'Effects are additive.')
+                else
+                  cecho('&lt;yellow&gt; &lt;---&lt;white&gt; unable to check: ' .. altItem)
+                end
+              end
+              
+            
+              
+              -- non additive item on alt side, remove it if it's in the results
+              if (tcatItemAltSide and isAltItemAdditive == false) then
+                for idx = #results, 1, -1 do
+                  if (results[idx] == tcatItemAltSide.catalogIndex) then
+                    table.remove(results, idx)
+                  end      
+                end
+              end
+           
+            end
+            
+            
+            -- remove any identical items from results 
+            -- not sure why this had anything to do with sidegrades
+            --(in case we are looking for sidegrades)
+            if (tcatItem) then -- and sidegradeQuery
+              for idx = #results, 1, -1 do
+                if (results[idx] == tcatItem.catalogIndex) then
+                  table.remove(results, idx)
+                end      
+              end        
+            end
+            
+            -- display(tcatItem.catalogIndex, results)
+            
+            if (verboseQuery or #results &gt; 0 or (tcatItem and itemHasNegativeAffect(tcatItem.catalogIndex))) then          
+              
+              cmd = 'tcat -w ' .. catalog.slotConversion[slot] .. '.' .. layer .. baseQuery
+              cechoLink('\n&lt;white&gt;[' .. slot .. '.' .. layer .. ']&lt;reset&gt; ', function() expandAlias(cmd) end, "show all usable items for " .. slot .. '.' .. layer, true)
+              
+              if (results.limit and results.totalCount and results.totalCount &gt; results.limit) then
+                cecho('displaying ' ..tostring(results.limit) .. ' of ' .. tostring(results.totalCount) .. ' results ')
+              end
+              
+              cecho(slotMessage .. '\n') 
+              
+              if (tcatItem) then
+                displayItem(tcatItem.catalogIndex, true, includeAverageDamage)
+              end        
+              
+              if emptySlot and #results == 0 then
+                cecho('No ' .. affect .. ' items available, ') 
+                cmd = 'tcat -w ' .. catalog.slotConversion[slot] .. '.' .. layer .. baseQuery
+                cechoLink('&lt;white&gt;see all items&lt;reset&gt;', function() expandAlias(cmd) end, "show items for " .. slot .. '.' .. layer, true)
+                cecho('\n')
+              end
+      
+              for zidx, idx in ipairs(results) do
+                displayItem(idx, nil, includeAverageDamage)
+              end
+              
+            end
+            
+          end -- if skipSlot or skipLayer
+        
+        end -- loop layers
+      end -- loop slots
+      
+        
+      cecho('\n\n&lt;green&gt;TCAT:&lt;white&gt; total ' .. affect .. ' equipped is ' .. tostring(gearTotal) .. '\n') 
+    
+    end)
+  
+    send('queue identity &amp; queue equipment')
+  end) -- end of get skills
+  
+end)
+
+  </script>
+			<command />
+			<packageName />
+			<regex>^tcat-audit( ?.*)$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>tcat help shortcut</name>
+			<script>expandAlias('tcat help')</script>
+			<command />
+			<packageName />
+			<regex>^(tcat|help tcat)\s*$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>tcat help weighted</name>
+			<script>  cecho('&lt;green&gt;TCAT: &lt;white&gt;Weighted search\n')
+  cecho('\n')
+  cecho('&lt;white&gt;tcat -a weighted&lt;reset&gt;              - Search by your configured item weights\n')
+  cecho('&lt;white&gt;tcat-audit -a weighted&lt;reset&gt;        - Audit by your configured item weights\n')
+  cecho('&lt;white&gt;tcat [item|#] -- debug-weight&lt;reset&gt; - See what made up an items weighted score\n')
+  cecho('\n')
+  cecho('&lt;green&gt;Configuration\n')
+  cecho('Make a new script and add the following:\n\n')
+  cecho('catalog = catalog or {}\n')
+  cecho('catalog.weights = {\n')
+  cecho('  dexterity = 1,\n')
+  cecho('  resist = 0.05,\n')
+  cecho('  mana_regen = 2,\n')
+  cecho('  ["Armor Class"] = 0.01,\n')
+  cecho('  deflection = 0.1,\n')
+  cecho('  heal = 2,\n')
+  cecho('}\n')
+  cecho('\n')
+  cecho('You can add anything that works with tcat -a into the weight table\n')</script>
+			<command />
+			<packageName />
+			<regex>^tcat help weighted$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>tcat-audit help shortcut</name>
+			<script>expandAlias('tcat-audit')</script>
+			<command />
+			<packageName />
+			<regex>^(help tcat-audit)\s*$</regex>
+		</Alias>
+		<Alias isActive="yes" isFolder="no">
+			<name>tfind</name>
+			<script>-- tfind sword
+-- Sword:
+  -- [ 672] Koheleth                       [36074] The Camel's Tongue
+  -- [1003] Trenhk                         [  918] The Chiiron Weapon Shop
+  -- [ 331] Saurd                          [19001] Weapon Smithy
+  -- [ 456] K'salsk                        [30754] Weaponcrafter's Home
+  -- [ 347] Dreglor                        [30339] Arena of Honor
+  -- [ 867] Wellburn                       [20010] Wellburn's Weapons
+  -- [ 299] Lanthar                        [30016] Lanthar's Premium Weapons
+  -- [1323] Angamoth                       [63504] Warleader's Chamber
+  -- [1797] Sniblik                        [60018] Sniblik's House of Blades
+  -- [ 222] Harkin                         [27031] Master Smith, Harkin
+
+if (matches[2] == 'diff') then
+  return catalog.diffRemoteTrainers()
+end
+
+-- catalog.lastTrainerUpdate
+
+catalog.lastTrainerUpdate = catalog.lastTrainerUpdate or 0
+
+local twentyFourHours = 24 * 60 * 60  -- 86400 seconds
+local timeDifference = getEpoch() - catalog.lastTrainerUpdate
+
+if ((#table.keys(catalog.trainers) &gt; 300) and timeDifference &lt; twentyFourHours) then
+  
+  local tFound = false
+    
+  local ss = matches[2]:lower() 
+  
+  for skill, rlist in pairs(catalog.trainers) do
+  
+    if skill:lower():match(ss) then
+      tFound = true
+      -- demonnic:fText('rintro &lt;cleric&gt;', {alignment = "left", width = 18, nogap=true})
+      cecho('\n&lt;white&gt;' .. skill .. ':&lt;reset&gt;\n')
+    
+      for idx, rnum in ipairs(rlist) do
+    
+        local rname = getRoomName(rnum)
+        local aname = getRoomAreaName(getRoomArea(rnum) or -1)
+        
+        cecho('&lt;white&gt;[')
+        if (tfe and tfe.turboWalkToRoom) then
+          cechoLink(
+            '&lt;green&gt;' .. demonnic:fText(tostring(rnum), {alignment = "right", width = 6, nogap=true}), 
+            function() tfe.turboWalkToRoom(rnum) end, 
+            "speedwalk to this room", 
+            true
+          )
+        else
+          cecho(demonnic:fText(tostring(rnum), {alignment = "right", width = 6, nogap=true}))
+        end
+        cecho('&lt;white&gt;] ')
+        
+        if (rname) then
+          cecho(demonnic:fText(rname, {alignment = "left", width = 30, nogap=true}))
+        end
+        
+        if (aname) then
+          cecho('(' .. aname .. ')')
+        end
+        
+        cecho('\n')               
+      
+      end
+    
+    end
+  
+  end
+  
+  if (not tFound) then
+    cecho('\n&lt;green&gt;CATALOG:&lt;white&gt; no trainer found for "' .. matches[2] .. '", use "&lt;orange&gt;tfecat loadTrainers&lt;white&gt;" to reload trainer data\n\n')
+  end
+
+else
+  -- need to load the catalog
+  local cmd = matches[2]
+  cecho('\n&lt;green&gt;CATALOG:&lt;white&gt; loading trainers...\n\n')
+  catalog.loadTrainers(function()
+    expandAlias('tfind ' .. cmd)
+  end)
+ 
+end</script>
+			<command />
+			<packageName />
+			<regex>^tfind (.{2,})$</regex>
+		</Alias>
+	</AliasPackage>
+	<ActionPackage />
+	<ScriptPackage>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>catalog_export</name>
+			<packageName />
+			<script />
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>JSON</name>
+				<packageName />
+				<script>-------------------------------------------------
+--         Put your Lua functions here.        --
+--                                             --
+-- Note that you can also use external scripts --
+-------------------------------------------------
+catalog = catalog or {}
+catalog.common = catalog.common or {}
+
+--
+-- json.lua
+--
+-- Copyright (c) 2019 rxi
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy of
+-- this software and associated documentation files (the "Software"), to deal in
+-- the Software without restriction, including without limitation the rights to
+-- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+-- of the Software, and to permit persons to whom the Software is furnished to do
+-- so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in all
+-- copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-- SOFTWARE.
+--
+
+local json = { _version = "0.1.2" }
+
+-------------------------------------------------------------------------------
+-- Encode
+-------------------------------------------------------------------------------
+
+local encode
+
+local escape_char_map = {
+  [ "\\" ] = "\\\\",
+  [ "\"" ] = "\\\"",
+  [ "\b" ] = "\\b",
+  [ "\f" ] = "\\f",
+  [ "\n" ] = "\\n",
+  [ "\r" ] = "\\r",
+  [ "\t" ] = "\\t",
+}
+
+local escape_char_map_inv = { [ "\\/" ] = "/" }
+for k, v in pairs(escape_char_map) do
+  escape_char_map_inv[v] = k
+end
+
+
+local function escape_char(c)
+  return escape_char_map[c] or string.format("\\u%04x", c:byte())
+end
+
+
+local function encode_nil(val)
+  return "null"
+end
+
+
+local function encode_table(val, stack)
+  local res = {}
+  stack = stack or {}
+
+  -- Circular reference?
+  if stack[val] then error("circular reference") end
+
+  stack[val] = true
+
+  if rawget(val, 1) ~= nil or next(val) == nil then
+    -- Treat as array -- check keys are valid and it is not sparse
+    local n = 0
+    for k in pairs(val) do
+      if type(k) ~= "number" then
+        error("invalid table: mixed or invalid key types")
+      end
+      n = n + 1
+    end
+    if n ~= #val then
+      error("invalid table: sparse array")
+    end
+    -- Encode
+    for i, v in ipairs(val) do
+      table.insert(res, encode(v, stack))
+    end
+    stack[val] = nil
+    return "[" .. table.concat(res, ",") .. "]"
+
+  else
+    -- Treat as an object
+    for k, v in pairs(val) do
+      if type(k) ~= "string" then
+        error("invalid table: mixed or invalid key types")
+      end
+      table.insert(res, encode(k, stack) .. ":" .. encode(v, stack))
+    end
+    stack[val] = nil
+    return "{" .. table.concat(res, ",") .. "}"
+  end
+end
+
+
+local function encode_string(val)
+  return '"' .. val:gsub('[%z\1-\31\\"]', escape_char) .. '"'
+end
+
+
+local function encode_number(val)
+  -- Check for NaN, -inf and inf
+  if val ~= val or val &lt;= -math.huge or val &gt;= math.huge then
+    error("unexpected number value '" .. tostring(val) .. "'")
+  end
+  return string.format("%.14g", val)
+end
+
+
+local type_func_map = {
+  [ "nil"     ] = encode_nil,
+  [ "table"   ] = encode_table,
+  [ "string"  ] = encode_string,
+  [ "number"  ] = encode_number,
+  [ "boolean" ] = tostring,
+}
+
+
+encode = function(val, stack)
+  local t = type(val)
+  local f = type_func_map[t]
+  if f then
+    return f(val, stack)
+  end
+  error("unexpected type '" .. t .. "'")
+end
+
+
+function json.encode(val)
+  return ( encode(val) )
+end
+
+
+-------------------------------------------------------------------------------
+-- Decode
+-------------------------------------------------------------------------------
+
+local parse
+
+local function create_set(...)
+  local res = {}
+  for i = 1, select("#", ...) do
+    res[ select(i, ...) ] = true
+  end
+  return res
+end
+
+local space_chars   = create_set(" ", "\t", "\r", "\n")
+local delim_chars   = create_set(" ", "\t", "\r", "\n", "]", "}", ",")
+local escape_chars  = create_set("\\", "/", '"', "b", "f", "n", "r", "t", "u")
+local literals      = create_set("true", "false", "null")
+
+local literal_map = {
+  [ "true"  ] = true,
+  [ "false" ] = false,
+  [ "null"  ] = nil,
+}
+
+
+local function next_char(str, idx, set, negate)
+  for i = idx, #str do
+    if set[str:sub(i, i)] ~= negate then
+      return i
+    end
+  end
+  return #str + 1
+end
+
+
+local function decode_error(str, idx, msg)
+  local line_count = 1
+  local col_count = 1
+  for i = 1, idx - 1 do
+    col_count = col_count + 1
+    if str:sub(i, i) == "\n" then
+      line_count = line_count + 1
+      col_count = 1
+    end
+  end
+  error( string.format("%s at line %d col %d", msg, line_count, col_count) )
+end
+
+
+local function codepoint_to_utf8(n)
+  -- http://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&amp;id=iws-appendixa
+  local f = math.floor
+  if n &lt;= 0x7f then
+    return string.char(n)
+  elseif n &lt;= 0x7ff then
+    return string.char(f(n / 64) + 192, n % 64 + 128)
+  elseif n &lt;= 0xffff then
+    return string.char(f(n / 4096) + 224, f(n % 4096 / 64) + 128, n % 64 + 128)
+  elseif n &lt;= 0x10ffff then
+    return string.char(f(n / 262144) + 240, f(n % 262144 / 4096) + 128,
+                       f(n % 4096 / 64) + 128, n % 64 + 128)
+  end
+  error( string.format("invalid unicode codepoint '%x'", n) )
+end
+
+
+local function parse_unicode_escape(s)
+  local n1 = tonumber( s:sub(3, 6),  16 )
+  local n2 = tonumber( s:sub(9, 12), 16 )
+  -- Surrogate pair?
+  if n2 then
+    return codepoint_to_utf8((n1 - 0xd800) * 0x400 + (n2 - 0xdc00) + 0x10000)
+  else
+    return codepoint_to_utf8(n1)
+  end
+end
+
+
+local function parse_string(str, i)
+  local has_unicode_escape = false
+  local has_surrogate_escape = false
+  local has_escape = false
+  local last
+  for j = i + 1, #str do
+    local x = str:byte(j)
+
+    if x &lt; 32 then
+      decode_error(str, j, "control character in string")
+    end
+
+    if last == 92 then -- "\\" (escape char)
+      if x == 117 then -- "u" (unicode escape sequence)
+        local hex = str:sub(j + 1, j + 5)
+        if not hex:find("%x%x%x%x") then
+          decode_error(str, j, "invalid unicode escape in string")
+        end
+        if hex:find("^[dD][89aAbB]") then
+          has_surrogate_escape = true
+        else
+          has_unicode_escape = true
+        end
+      else
+        local c = string.char(x)
+        if not escape_chars[c] then
+          decode_error(str, j, "invalid escape char '" .. c .. "' in string")
+        end
+        has_escape = true
+      end
+      last = nil
+
+    elseif x == 34 then -- '"' (end of string)
+      local s = str:sub(i + 1, j - 1)
+      if has_surrogate_escape then
+        s = s:gsub("\\u[dD][89aAbB]..\\u....", parse_unicode_escape)
+      end
+      if has_unicode_escape then
+        s = s:gsub("\\u....", parse_unicode_escape)
+      end
+      if has_escape then
+        s = s:gsub("\\.", escape_char_map_inv)
+      end
+      return s, j + 1
+
+    else
+      last = x
+    end
+  end
+  decode_error(str, i, "expected closing quote for string")
+end
+
+
+local function parse_number(str, i)
+  local x = next_char(str, i, delim_chars)
+  local s = str:sub(i, x - 1)
+  local n = tonumber(s)
+  if not n then
+    decode_error(str, i, "invalid number '" .. s .. "'")
+  end
+  return n, x
+end
+
+
+local function parse_literal(str, i)
+  local x = next_char(str, i, delim_chars)
+  local word = str:sub(i, x - 1)
+  if not literals[word] then
+    decode_error(str, i, "invalid literal '" .. word .. "'")
+  end
+  return literal_map[word], x
+end
+
+
+local function parse_array(str, i)
+  local res = {}
+  local n = 1
+  i = i + 1
+  while 1 do
+    local x
+    i = next_char(str, i, space_chars, true)
+    -- Empty / end of array?
+    if str:sub(i, i) == "]" then
+      i = i + 1
+      break
+    end
+    -- Read token
+    x, i = parse(str, i)
+    res[n] = x
+    n = n + 1
+    -- Next token
+    i = next_char(str, i, space_chars, true)
+    local chr = str:sub(i, i)
+    i = i + 1
+    if chr == "]" then break end
+    if chr ~= "," then decode_error(str, i, "expected ']' or ','") end
+  end
+  return res, i
+end
+
+
+local function parse_object(str, i)
+  local res = {}
+  i = i + 1
+  while 1 do
+    local key, val
+    i = next_char(str, i, space_chars, true)
+    -- Empty / end of object?
+    if str:sub(i, i) == "}" then
+      i = i + 1
+      break
+    end
+    -- Read key
+    if str:sub(i, i) ~= '"' then
+      decode_error(str, i, "expected string for key")
+    end
+    key, i = parse(str, i)
+    -- Read ':' delimiter
+    i = next_char(str, i, space_chars, true)
+    if str:sub(i, i) ~= ":" then
+      decode_error(str, i, "expected ':' after key")
+    end
+    i = next_char(str, i + 1, space_chars, true)
+    -- Read value
+    val, i = parse(str, i)
+    -- Set
+    res[key] = val
+    -- Next token
+    i = next_char(str, i, space_chars, true)
+    local chr = str:sub(i, i)
+    i = i + 1
+    if chr == "}" then break end
+    if chr ~= "," then decode_error(str, i, "expected '}' or ','") end
+  end
+  return res, i
+end
+
+
+local char_func_map = {
+  [ '"' ] = parse_string,
+  [ "0" ] = parse_number,
+  [ "1" ] = parse_number,
+  [ "2" ] = parse_number,
+  [ "3" ] = parse_number,
+  [ "4" ] = parse_number,
+  [ "5" ] = parse_number,
+  [ "6" ] = parse_number,
+  [ "7" ] = parse_number,
+  [ "8" ] = parse_number,
+  [ "9" ] = parse_number,
+  [ "-" ] = parse_number,
+  [ "t" ] = parse_literal,
+  [ "f" ] = parse_literal,
+  [ "n" ] = parse_literal,
+  [ "[" ] = parse_array,
+  [ "{" ] = parse_object,
+}
+
+
+parse = function(str, idx)
+  local chr = str:sub(idx, idx)
+  local f = char_func_map[chr]
+  if f then
+    return f(str, idx)
+  end
+  decode_error(str, idx, "unexpected character '" .. chr .. "'")
+end
+
+
+function json.decode(str)
+  if type(str) ~= "string" then
+    error("expected argument of type string, got " .. type(str))
+  end
+  local res, idx = parse(str, next_char(str, 1, space_chars, true))
+  idx = next_char(str, idx, space_chars, true)
+  if idx &lt;= #str then
+    decode_error(str, idx, "trailing garbage")
+  end
+  return res
+end
+
+
+catalog.common.json = json</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>catalog</name>
+				<packageName />
+				<script>player = player or {}
+
+catalog = catalog or {}
+catalog.events = catalog.events or {}
+
+catalog.events.CHECK_PROMPT =  'tfecat: checked yo prompt'
+catalog.events.PARSED_EQUIPMENT = 'tfecat: checked out ya gear'
+catalog.events.PARSED_IDENTITY = 'tfecat: checked your papers'
+catalog.events.PARSED_ABILITIES = 'tfecat: checked your moves'
+catalog.events.PARSED_SCORE = 'tfecat: checked your stats'
+
+catalog.items = catalog.items or {}
+catalog.itemsIndex = catalog.itemsIndex or {}
+catalog.itemCalculated = catalog.itemCalculated or {}
+
+catalog.summary = catalog.summary or {}
+
+catalog.customs = catalog.customs or {}
+catalog.trainers = catalog.trainers or {}
+
+catalog.parsing = false
+
+catalog.serverUrl = 'http://vault-thirteen.net:49160' 
+-- catalog.serverUrl = 'http://localhost:3000'
+
+local itemVersion = 1.3 -- bumped for reaver/legate/harb updates (maybe bulwark)
+
+local processedVersion = 1.2
+
+-- if the current processedversion doesn't match what we have loaded we need to reload the catalog
+if (catalog.processedVersion ~= processedVersion) then
+  cecho('\n&lt;yellow&gt;TFECAT: &lt;white&gt;catalog item processing has been updated, need to reload catalog!\n')  
+  catalog.items = {}
+  catalog.itemsIndex = {}
+  catalog.itemCalculated = {}
+  catalog.summary = {}
+  catalog.customs = {}
+  catalog.trainers = {}
+  catalog.processedVersion = processedVersion
+  tempTimer(1, function()
+    -- nb catalog.load might not exist yet :p
+    catalog.load()
+  end)
+end
+
+local affectMissingDot = {
+  ["Grants Haste"] = true,
+  ["Can provide occasional hardiness"] = true,
+  ["Grants displacement"] = true,
+  ["Grants divine protection"] = true,
+  ["Permits levitation in the vertical plane"] = true,
+  ["Causes lethargy"] = true,
+}
+
+
+catalog.addWeirdItems = function()
+-- 
+  -- catalog.export(function(items)    
+-- 
+    -- local oTemp = items["a thick cloak of protection"]
+    -- 
+    -- oTemp.affects = {
+      -- {
+        -- amount = 2,
+        -- name = "Hitroll",
+        -- type = "property"
+      -- }, {
+        -- amount = 1,
+        -- name = "Damroll",
+        -- type = "property"
+      -- }, {
+        -- amount = 3,
+        -- name = "Deflection",
+        -- type = "property"
+      -- }, {
+        -- name = "Is magical.",
+        -- type = "affect"
+      -- }    
+    -- }
+    -- 
+    -- items["a thick cloak of protection"] = table.deepcopy(oTemp)
+    -- 
+    -- oTemp.affects = {
+      -- {
+        -- amount = 3,
+        -- name = "Hitroll",
+        -- type = "property"
+      -- }, {
+        -- amount = 1,
+        -- name = "Damroll",
+        -- type = "property"
+      -- }, {
+        -- amount = 5,
+        -- name = "Deflection",
+        -- type = "property"
+      -- }, {
+        -- name = "Is magical.",
+        -- type = "affect"
+      -- }    
+    -- }
+    -- oTemp.name = "a thick cloak of greater protection"
+    -- 
+    -- items["cloak of greater protection"] = table.deepcopy(oTemp)
+    -- 
+    -- oTemp.affects = {
+      -- {
+        -- amount = 3,
+        -- name = "Hitroll",
+        -- type = "property"
+      -- }, {
+        -- amount = 2,
+        -- name = "Damroll",
+        -- type = "property"
+      -- }, {
+        -- amount = 7,
+        -- name = "Deflection",
+        -- type = "property"
+      -- }, {
+        -- name = "Is magical.",
+        -- type = "affect"
+      -- }    
+    -- }
+    -- oTemp.name = "a thick cloak of invulnerability"
+        -- 
+    -- items["cloak of invulnerability"] = table.deepcopy(oTemp)    
+    -- 
+    -- catalog.transmit(items)    
+    -- 
+  -- end, {checkEverything = true, searchText = 'thick cloak of protection'})
+
+-- 
+  -- catalog.export(function(items)    
+-- 
+    -- display(items)
+    -- 
+    -- local oTemp = items["a velvet mask of the maiden"]
+    -- 
+    -- oTemp.affects = { 
+      -- {
+        -- amount = 10,
+        -- name = "Hit_points",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- name = "Is magical.",
+        -- type = "affect"
+      -- }, 
+      -- {
+        -- amount = 2,
+        -- name = "Damroll",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- amount = 1,
+        -- name = "Strength",
+        -- type = "property"
+      -- }, 
+    -- }
+    -- 
+    -- items["a velvet mask of the maiden"] = table.deepcopy(oTemp) 
+    -- 
+    -- oTemp.affects = { 
+      -- {
+        -- amount = 10,
+        -- name = "Hit_points",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- name = "Is magical.",
+        -- type = "affect"
+      -- }, 
+-- 
+      -- {
+        -- amount = 1,
+        -- name = "Constitution",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- amount = 5,
+        -- name = "Deflection",
+        -- type = "property"
+      -- },
+    -- }
+    -- oTemp.name = "a velvet mask of the crone"
+    -- items["a velvet mask of the crone"] = table.deepcopy(oTemp)
+    -- 
+    -- oTemp.affects = { 
+      -- {
+        -- amount = 10,
+        -- name = "Hit_points",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- name = "Is magical.",
+        -- type = "affect"
+      -- }, 
+      -- {
+        -- amount = 1,
+        -- name = "Wisdom",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- amount = 20,
+        -- name = "Mana_points",
+        -- type = "property"
+      -- }, 
+      -- {
+        -- amount = 0.5,
+        -- name = "Mana_regen",
+        -- type = "property"
+      -- } 
+    -- }
+    -- oTemp.name = "a velvet mask of the mother"
+    -- items["a velvet mask of the mother"] = table.deepcopy(oTemp)
+    -- 
+    -- catalog.transmit(items)
+    -- 
+  -- end, {checkEverything = true, searchText = 'velvet mask of the maiden'})
+
+
+end
+
+
+catalog.showMissingLocalItems = function()
+
+  local localList = {}
+  
+  local results = {}
+  
+  for inum, item in pairs (catalog.localItems) do
+    localList[item] = true
+  end
+
+  for item, itemData in pairs(catalog.items) do
+    if not localList[item] then
+      table.insert(results, itemData.catalogIndex)
+    end    
+  end
+    
+  return results
+
+end
+
+
+catalog.versionCount = function()
+  local catver = {}
+  for name, item in pairs(catalog.items) do
+    local ver = tostring(item.itemVersion)
+    catver[ver] = catver[ver] or 0
+    catver[ver] = catver[ver] + 1
+  end
+  display(catver)
+end
+
+catalog.versionCountDetail = function(version)
+  local catver = {}
+  for name, item in pairs(catalog.items) do
+    if item.itemVersion == version then
+      catver[item.source] = catver[item.source] or 0
+      catver[item.source] = catver[item.source] + 1
+    end
+  end
+  display(catver)
+end
+
+catalog.showVersionItems = function(version, player)
+  for name, item in pairs(catalog.items) do
+    if item.itemVersion == version then
+      if (player == nil or item.source == player) then
+        display(name)
+      end
+    end
+  end
+end
+
+catalog.purgeVersionItems = function(version)
+ 
+  local purgeItems = {}
+  
+  for name, item in pairs(catalog.items) do
+    if item.itemVersion == version then
+      table.insert(purgeItems, name)
+    end
+  end
+   
+  local pcount = #purgeItems
+   
+  if (pcount &gt; 0) then
+    
+    purgeItems = catalog.common.json.encode(purgeItems)
+    
+    postHTTP(purgeItems, catalog.serverUrl .. "/catalog/deleteItems", {["Content-type"] = "application/json"})
+    cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;' .. tostring(pcount) .. ' items sent to server to be purged!\n')  
+  
+  else
+    cecho('\n&lt;yellow&gt;TFECAT: &lt;white&gt;no items needed purging!\n')  
+  end
+
+end
+
+
+catalog.removeItem = function(rname)
+ 
+  local purgeItems = {}
+  
+  for name, item in pairs(catalog.items) do
+    if name == rname then
+      table.insert(purgeItems, name)
+    end
+  end
+ 
+  display(purgeItems)  
+   
+  local pcount = #purgeItems
+   
+  if (pcount &gt; 0) then
+    
+    purgeItems = catalog.common.json.encode(purgeItems)
+    
+    postHTTP(purgeItems, catalog.serverUrl .. "/catalog/deleteItems", {["Content-type"] = "application/json"})
+    cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;' .. tostring(pcount) .. ' items sent to server to be purged!\n')  
+  
+  else
+    cecho('\n&lt;yellow&gt;TFECAT: &lt;white&gt;no items needed purging!\n')  
+  end
+
+end
+
+catalog.fixMissingDot = function(affect)
+
+  local newItems = {}
+
+  for name, item in pairs(catalog.items) do
+  
+    if item.buffer:find(affect) then
+      -- display(item)
+      
+      local buffer = item.buffer:split('\n')
+      
+      item.buffer = {}
+      item.affects = {}
+
+      item.parsingStarted = true
+      for idx, str in ipairs(buffer) do
+        catalog.parseItemLine(str, item)
+      end
+      
+      item.parsingEnding = true
+  
+      catalog.processItem(item)
+      
+      newItems[name] = item
+      
+    end
+    
+  end
+
+
+end
+
+
+
+local titleCase = function(first, rest )
+   return first:upper()..rest:lower()
+end
+
+
+catalog.getItemAllowedFlags = function(flags)
+  
+  local filterFn = function(key, val)
+    if (val) then
+      return true
+    end
+    return false
+  end
+  
+  local getRestrictions = function(flags, field)
+    
+    local maxAllowed = #table.keys(flags[field])
+    
+    local allowed = table.keys(table.collect(flags[field], filterFn))
+    
+    -- display(field, maxAllowed, allowed)
+    
+    if #allowed == maxAllowed then
+      return nil
+    else
+      return allowed
+    end
+  
+  end
+
+  local allowedFlags = {
+    alignment = getRestrictions(flags, 'charAlignments'),
+    class = getRestrictions(flags, 'charClasses'),
+    gender = getRestrictions(flags, 'charGenders'),
+    race = getRestrictions(flags, 'charRaces'),
+    hasRestrictions = false
+  }
+  
+  if (allowedFlags.alignment  or allowedFlags.class or allowedFlags.gender or allowedFlags.race) then
+    allowedFlags.hasRestrictions = true
+  end
+  
+  
+  return allowedFlags
+end
+
+
+catalog.displayItem = function(idx, weightedQuery)
+  
+  local item = catalog.items[catalog.itemsIndex[idx]]
+  local flags = catalog.getItemAllowedFlags(catalog.itemCalculated[idx])
+
+
+  -- display(item)
+  
+  cecho('\n\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n')
+  if (item.name:lower() ~= item['Unidentified Name']:lower()) then
+    local ts = string.gsub(item.name, "(%a)([%w_']*)", titleCase) 
+    local title = demonnic:cfText('&lt;white&gt;' .. ts, {alignment = "center", width = 80, nogap=true})
+    cecho(title .. '\n')
+    cecho(demonnic:cfText(rex.gsub(ts, '[^ ]', '-'), {alignment = "center", width = 80, nogap=true}) .. '\n')
+    
+
+  end
+  cecho(item.buffer)
+  cecho('\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n')
+  
+  local hasAdditionalInfo = false
+  
+  if (flags.hasRestrictions or item.averageDamage) then
+    hasAdditionalInfo = true
+  end
+  
+  if (item.averageDamage) then
+    cecho('\n  Average Damage: ' .. tostring(item.averageDamage) .. '\n' )
+  end
+  
+  if (flags.hasRestrictions) then
+    
+    cecho('\n       Usable by:\n')
+    for idx, key in ipairs({'alignment', 'class', 'gender', 'race'}) do
+      if (flags[key]) then
+        cecho(demonnic:cfText('&lt;reset&gt;' .. key .. ': ', {alignment = "right", width = 18, nogap=true}) .. table.concat(flags[key], ', ') .. '\n')
+      end
+    end
+
+  end
+  
+  if (hasAdditionalInfo) then
+    cecho('\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n')
+  end
+  
+  if (weightedQuery) then    
+    cecho('\n               &lt;white&gt;Weight summary:&lt;reset&gt;\n\n')
+    catalog.getAffect(item, 'weighted', nil, catalog.player.stats, true)   
+    cecho('\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n\n')
+  end
+  
+  if (item.custom and #table.keys(item.custom)) then
+    
+    for rnum, data in pairs(item.custom) do
+  
+      cecho('\n       &lt;white&gt;Custom&lt;reset&gt; for ' .. tostring(data.price) .. ' at #')
+
+      local rname = getRoomName(rnum)
+      local aname = getRoomAreaName(getRoomArea(rnum) or -1)      
+      
+      if (tfe and tfe.turboWalkToRoom) then
+        cechoLink(
+          '&lt;green&gt;' .. tostring(rnum), 
+          function() tfe.turboWalkToRoom(rnum) end, 
+          "speedwalk to this room", 
+          true
+        )
+      else
+        cecho(tostring(rnum))
+      end
+              
+      if (rname) then
+        cecho(' - ' .. rname)
+      end
+      
+      if (aname) then
+        cecho(' (' .. aname .. ')')
+      end      
+      
+      cecho('\n')
+      
+      for idx, mat in ipairs(data.ingredients) do 
+        local matItem = catalog.findItem(mat.material)
+            
+        cecho('         ' .. tostring(mat.amount) .. ' x ')
+        
+        if (matItem) then
+          cechoLink('&lt;green&gt;' .. mat.material .. '&lt;reset&gt;', function() catalog.displayItem(matItem.catalogIndex, false) end, "display material", true)
+        else
+          cecho(mat.material)
+        end
+        
+        cecho('\n')
+        
+        
+      end
+    
+    end
+  
+    cecho('\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n')
+  end
+  
+  
+  
+end
+
+
+-- this is the code that will be in the one liner to export
+catalog.install = function ()
+  
+  if (njs50pm) then
+    
+    expandAlias('njs50pm update tfecat')
+  
+  else
+      
+    local URL = "https://raw.githubusercontent.com/njs50/njs50-package-manager/main/njs50-package-manager.xml"
+    
+    local installHandler
+    
+    installHandler = registerAnonymousEventHandler("sysInstallPackage", function(_, name)
+      -- stop if what got installed isn't my thing
+      if name ~= "njs50-package-manager" then 
+        return 
+      end
+      
+      killAnonymousEventHandler(installHandler)
+      expandAlias('njs50pm install tfecat')
+    
+    end)
+    
+    installPackage(url)   
+    
+  end
+
+end
+
+
+catalog.transmit = function(items, cb)
+
+  if (#table.keys(items) &gt; 0) then
+    
+    local catJson = catalog.common.json.encode(items)
+    
+    local postDoneHandler
+    
+    postDoneHandler = registerAnonymousEventHandler("sysPostHttpDone", function(_, url, body)
+    
+      killAnonymousEventHandler(postDoneHandler)
+      cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;new items sent to server!\n')
+      if (cb) then
+        cb()
+      end
+      
+    end)
+  
+        
+    postHTTP(catJson, catalog.serverUrl .. "/catalog/diff", {["Content-type"] = "application/json"})
+
+  else
+  
+    if (cb) then
+      cb()
+    end
+        
+  end
+
+end
+
+-- 
+-- catalog.createDif = function(items, cb)
+-- 
+  -- local newItems = #table.keys(items)
+  -- 
+  -- if (newItems &gt; 0) then
+    -- local filepath = getMudletHomeDir().."/catalog_dif.json"
+    -- local file = io.open(filepath,"w")
+    -- file:write(catalog.common.json.encode(items))
+    -- file:close()
+    -- cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; ' .. tostring(newItems) .. ' new items written to ' .. filepath .. '\n\n') 
+    -- 
+  -- else
+    -- cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; no new items to export!\n\n') 
+  -- end
+    -- 
+  -- if (cb) then
+    -- cb(items)
+  -- end
+-- 
+-- end
+
+
+catalog.export = function(cb, options)
+
+  local options = options or {}
+  
+  
+  -- display('opts', options)
+
+
+  catalog.load( function(publicCatalog)
+    
+    cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt;loaded ' .. tostring(#table.keys(publicCatalog)) .. ' items from github!\n\n')
+    
+    catalog.getAllItems(function(items)
+       cb(items)
+    end, options)
+    
+  end)
+
+end
+
+
+
+catalog.mergeDiff = function(cb)
+
+  local filepath = getMudletHomeDir().."/catalog_dif.json"
+  local outputFile = getMudletHomeDir().."/catalog.json"
+
+  catalog.load(function(publicCatalog) 
+  
+    cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt;loaded ' .. tostring(#table.keys(publicCatalog)) .. ' items from github!\n\n')
+  
+    local file, s, catJson = io.open(filepath)
+    
+    if file then 
+      catJson = file:read("*all"); 
+      io.close(file) 
+    end  
+    
+    local diffItems = catalog.common.json.decode(catJson)
+    
+    local diffCount = 0
+    
+    for itemName, item in pairs(diffItems) do
+      
+      if (not publicCatalog[itemName]) then
+        publicCatalog[itemName] = item
+        diffCount = diffCount + 1
+      end
+      
+    end
+    
+    if (diffCount &gt; 0) then
+      cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; ' .. tostring(diffCount) .. ' new items added to catalog\n\n')
+      local outfile = io.open(outputFile,"w")
+      outfile:write(catalog.common.json.encode(publicCatalog))
+      outfile:close()
+    else
+      cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; no new items to merge to catalog!\n\n')
+    end
+ 
+  end)
+
+end
+
+
+catalog.load = function(cb, altSrc)
+      
+  local src = altSrc or 'https://njs50.github.io/tfecat/catalog.json'
+
+  local downloadHandler
+
+  
+  -- register our function to run on the event that something was downloaded
+  downloadHandler = registerAnonymousEventHandler("sysDownloadDone", function(_, filename)
+    -- is the file that downloaded ours?
+    if not filename:find("catalog.json", 1, true) then return end
+    
+    killAnonymousEventHandler(downloadHandler)
+    
+    -- read the contents of the webpage in
+    local file, s, catJson = io.open(filename)
+    
+    if file then 
+      catJson = file:read("*all"); 
+      io.close(file) 
+    end
+    
+    -- delete the file on disk, don't clutter
+    os.remove(filename)
+  
+  
+    catalog.items = catalog.common.json.decode(catJson)
+    
+    -- enhance items
+    local count = 1
+    for idx, item in pairs(catalog.items) do  
+      item.searchItemName = catalog.sanitizeItemName(item.name or '')
+      item.searchUnidentifiedItemName = catalog.sanitizeItemName(item["Unidentified Name"] or '')
+      count = count + 1
+      if (count % 200 == 0) then
+        collectgarbage('collect')
+      end
+    end
+    
+    catalog.itemsIndex = table.keys(catalog.items)
+    
+    
+    
+    -- process anti flags
+    for idx, itemName in pairs(catalog.itemsIndex) do
+    
+      local item = catalog.items[itemName]
+      item.catalogIndex = idx
+    
+      local newFlags = {}
+      
+      newFlags.charAlignments = {
+        LG = true,
+        LN = true,
+        LE = true,
+        NG = true,
+        PN = true,
+        NE = true,
+        CG = true,
+        CN = true,
+        CE = true,
+      }
+
+      newFlags.charRaces = {
+        ogre = true,
+        troll = true,
+        orc = true,
+        vyan = true,
+        goblin = true,
+        human = true,
+        lizardfolk = true,
+        dwarf = true,
+        halfling = true,
+        gnome = true,
+        ent = true,
+        elf = true,
+        centaur = true,
+      }
+
+      newFlags.charClasses = {
+        bard = true,
+        bulwark = true,
+        cleric = true,
+        druid = true,
+        mage = true,
+        monk = true,
+        paladin = true,
+        ranger = true,
+        thief = true,
+        warrior = true,
+        harbinger = true,
+        reaver = true,
+        legate = true,
+      }
+
+      newFlags.charGenders = {
+        male = true,
+        female = true,
+      }    
+      
+      -- -- process anti flags
+      if (item["Anti-Flags"]) then
+        
+        for idx, flag in ipairs(item["Anti-Flags"]) do
+        
+          flag = rex.gsub(flag, [[^anti-]], '');
+          flag = rex.gsub(flag, [[^lizardman]], 'lizardfolk');
+          
+          if (newFlags.charRaces[flag]) then
+          
+            newFlags.charRaces[flag] = false
+            
+          elseif (newFlags.charClasses[flag]) then
+            
+            newFlags.charClasses[flag] = false
+            
+          elseif (newFlags.charGenders[flag]) then
+          
+            newFlags.charGenders[flag] = false
+            
+          elseif flag == 'good' then
+          
+            newFlags.charAlignments.LG = false;
+            newFlags.charAlignments.NG = false;
+            newFlags.charAlignments.CG = false;
+           
+          elseif flag == 'evil' then
+          
+            newFlags.charAlignments.LE = false;
+            newFlags.charAlignments.NE = false;
+            newFlags.charAlignments.CE = false;
+            
+          elseif flag == 'lawful' then
+          
+            newFlags.charAlignments.LG = false;
+            newFlags.charAlignments.LN = false;
+            newFlags.charAlignments.LE = false;
+           
+          elseif flag == 'chaotic' then
+          
+            newFlags.charAlignments.CG = false;
+            newFlags.charAlignments.CN = false;
+            newFlags.charAlignments.CE = false;
+           
+          elseif flag == 'only-good-evil' then
+          
+            newFlags.charAlignments.LN = false;
+            newFlags.charAlignments.PN = false;
+            newFlags.charAlignments.CN = false;
+            
+          elseif flag == 'only-law-chaos' then
+          
+            newFlags.charAlignments.NG = false;
+            newFlags.charAlignments.PN = false;
+            newFlags.charAlignments.NE = false;
+            
+          else
+            -- display(item)
+            -- error('Unknown anti flag! - ' .. flag)
+            cecho('\n\n&lt;red&gt;CATALOG:&lt;white&gt; Unknown anti flag! - ' .. flag .. '\n')
+          end -- flag cases
+        
+        end -- anti flag loop
+        
+      end -- if has anti-flags
+    
+      if (item.Restrictions and table.contains(item.Restrictions, 'bladed')) then
+        newFlags.charClasses.cleric = false;
+        newFlags.charClasses.druid = false;
+      end
+
+      if (item.Restrictions and table.contains(item.Restrictions, 'dishonorable')) then
+        newFlags.charClasses.paladin = false;
+      end
+    
+      catalog.itemCalculated[idx] = newFlags
+      
+    end -- item loop
+    
+    catalog.slots = catalog.getItemsBySlotLayer()
+    
+    if (cb) then
+      cb(catalog.items)
+    end
+
+  end)
+  
+  
+  if altSrc and altSrc ~= '' then 
+    cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; downloading catalog from ' .. src .. '\n\n')
+    downloadFile(getMudletHomeDir().."/catalog.json", src .. '?_=' .. tostring(getEpoch))
+  else
+  
+  
+    njs50pm.getRemoteHash({
+      module = 'tfecat',
+      githubUser = 'njs50',
+      branch = 'gh-pages',
+      filename = 'catalog.json',      
+    }, function(hash)
+      -- cecho('\n&lt;green&gt;TFECAT:&lt;white&gt; current data is from - ' .. hash .. '\n\n')
+      local URL = 'https://raw.githubusercontent.com/njs50/tfecat/' .. hash .. '/catalog.json'    
+      cecho('\n&lt;green&gt;TFECAT:&lt;white&gt; loading - ' .. URL)
+      downloadFile(getMudletHomeDir().."/catalog.json", URL)
+
+    end)    
+  end
+
+
+
+end
+
+catalog.loadFile = function(src, cb)
+  
+  local url = src .. '?_=' .. tostring(getEpoch())
+  
+  local header = {["Content-Type"] = "application/json"}
+
+  
+  local responseHandler, errorHandler
+  
+  local selfDestruct = function()
+    killAnonymousEventHandler(responseHandler)
+    killAnonymousEventHandler(errorHandler)
+  end
+  
+  -- first we create something to handle the success, and tell us what we got
+  responseHandler = registerAnonymousEventHandler('sysGetHttpDone', function(event, rurl, response)
+    if rurl == url then 
+      selfDestruct()
+      
+      response = yajl.to_value(response)
+      
+      cb(response)
+        
+    end
+    
+  end)
+  
+  -- then we create something to handle the error message, and tell us what went wrong
+  errorHandler = registerAnonymousEventHandler('sysGetHttpError', function(event, response, rurl)
+    if rurl == url then 
+      selfDestruct()
+      
+      cecho('\n&lt;red&gt;njs50pm:&lt;white&gt; failed to download - ' .. url .. '\n\n')
+      display(response) 
+      
+    end
+  end)
+  
+  -- Lastly, we make the request:
+  -- cecho('\nrequesting: ' .. url .. '\n')
+  getHTTP(url, header)
+
+
+end
+
+
+catalog.showSummary = function()
+  
+  catalog.loadFile('https://njs50.github.io/tfecat/summary.json', function(summary)
+    catalog.summary = summary
+    
+    local st = demonnic.TableMaker:new({
+      edgeCharacter = '|'
+    })
+    
+    
+    st:addColumn({name = "Account", width = 25, textColor = "&lt;green&gt;"})
+    st:addColumn({name = "Items", width = 20, textColor = "&lt;white&gt;"})
+    st:addColumn({name = "Unprocessed Items", width = 20, textColor = "&lt;purple&gt;"})
+    
+    
+    catalog.loadFile(catalog.serverUrl .. "/catalog/summary", function(pending)
+          
+      for sucker, count in pairs(pending) do
+        
+        local pending = count - (summary[sucker] or 0)
+        count = count - pending
+        
+        st:addRow({sucker, tostring(count), tostring(pending)})
+      end
+            
+      for sucker, count in pairs(summary) do
+        
+        if (not pending[sucker]) then        
+          st:addRow({sucker, tostring(count), tostring(0 - count)})
+        end
+        
+      end      
+      
+      cecho(st:assemble())
+    
+    end)
+    
+  end)
+
+end
+
+
+catalog.debouncedLoadTrainers = function()
+  
+  if (catalog.nextLoadTrainers) then
+    killTimer(catalog.nextLoadTrainers)
+  end
+  
+  catalog.nextLoadTrainers = tempTimer(600, function()    
+    catalog.nextLoadTrainers = nil
+    catalog.loadTrainers()
+  end) -- , 'sync trainers' not allowed labels in tfecat :-[
+
+end
+
+
+catalog.diffRemoteTrainers = function(cb)
+  
+  catalog.loadFile('https://njs50.github.io/tfecat/trainers.json', function(published)
+    catalog.loadFile(catalog.serverUrl .. "/trainers", function(pending)    
+
+      local diff = {}
+      for skill, rlist in pairs(pending) do      
+        if (not published[skill]) then
+          diff[skill] = rlist
+        else
+          for idx, rnum in ipairs(pending[skill]) do
+            if not table.contains(published[skill], rnum) then
+              diff[skill] = diff[skill] or {}
+              table.insert(diff[skill], rnum)
+            end
+          end            
+        end    
+      end
+    
+      display(diff)
+    
+    end)
+  end)
+
+end
+
+catalog.loadTrainers = function(cb)
+
+  -- kill any pending loads
+  if (catalog.nextLoadTrainers) then
+    killTimer(catalog.nextLoadTrainers)
+    catalog.nextLoadTrainers = nil
+  end
+  
+  local skillCount = #table.keys(catalog.trainers)
+  
+  catalog.loadFile('https://njs50.github.io/tfecat/trainers.json', function(published)
+    
+    local diff = {}
+    for skill, rlist in pairs(catalog.trainers) do      
+      if (not published[skill]) then
+        if (not table.contains(published[skill], 0)) then
+          diff[skill] = rlist
+        end
+      else
+        for idx, rnum in ipairs(catalog.trainers[skill]) do
+          if (not table.contains(published[skill], rnum)) and 
+             (not table.contains(published[skill], 0)) then
+            diff[skill] = diff[skill] or {}
+            table.insert(diff[skill], rnum)
+          end
+        end            
+      end    
+    end
+    
+    -- merge any new items back into the local catalog
+    for skill, rlist in pairs(published) do      
+      if (not catalog.trainers[skill]) then
+        if (not table.contains(rlist, 0)) then
+          catalog.trainers[skill] = rlist
+        end
+      else
+        for idx, rnum in ipairs(published[skill]) do
+          -- remove any items marked as deleted (contains rnum = 0)
+          if (rnum == 0) then
+            catalog.trainers[skill] = nil
+            break
+          elseif not table.contains(catalog.trainers[skill], rnum) then
+            table.insert(catalog.trainers[skill], rnum)
+          end
+        end            
+      end    
+    end    
+    
+    
+    
+    
+    catalog.uploadDiff('trainers', diff, function()
+      local newCount = #table.keys(catalog.trainers)
+      if (newCount ~= skillCount) then
+        cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;trainers for ' .. tostring(#table.keys(catalog.trainers)) .. ' skills loaded!\n')
+      else
+        cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;trainers up to date!\n')
+      end
+      if (cb) then cb() end
+    end)    
+    
+    catalog.lastTrainerUpdate = getEpoch()
+    
+  end)
+
+end
+
+
+
+catalog.uploadDiff = function(diffType, diff, cb)
+
+  local records = #table.keys(diff)
+
+  if (records &gt; 0) then
+    
+    local catJson = yajl.to_string(diff)
+    
+    local postDoneHandler
+    local postUrl = catalog.serverUrl .. "/" .. diffType .. "/diff"
+        
+    postDoneHandler = registerAnonymousEventHandler("sysPostHttpDone", function(_, url, body)
+    
+      if (url == postUrl) then
+        killAnonymousEventHandler(postDoneHandler)
+        cecho('\n&lt;green&gt;TFECAT: &lt;white&gt;' .. tostring(records) .. ' new ' .. diffType .. ' sent to server!\n')
+        if (cb) then
+          cb()
+        end
+      end
+      
+    end)
+            
+    postHTTP(catJson, postUrl, {["Content-type"] = "application/json"})
+
+  else
+    
+    if (cb) then
+      cb()
+    end
+        
+  end
+
+end
+
+
+
+catalog.showDiff = function()
+  
+  catalog.loadFile('https://njs50.github.io/tfecat/catalog.json', function(published)
+    catalog.summary = summary
+    
+    local st = demonnic.TableMaker:new({
+      edgeCharacter = '|'
+    })
+    
+    
+    st:addColumn({name = "Account", width = 15, textColor = "&lt;green&gt;"})
+    st:addColumn({name = "Item", width = 40, textColor = "&lt;white&gt;"})
+    st:addColumn({name = "Item", width = 25, textColor = "&lt;white&gt;"})
+    
+    catalog.loadFile(catalog.serverUrl .. "/catalog", function(pending)
+          
+      for item, itemData in pairs(pending) do
+        
+        if (not published[item]) then
+          st:addRow({itemData.source, item, '&lt;green&gt;added'})
+        end
+       
+        if (published[item] and published[item].datetime ~= itemData.datetime) then          
+          st:addRow({itemData.source, item, '&lt;red&gt;updated ' .. published[item].source})
+        end
+
+      end
+      
+      for item, itemData in pairs(published) do
+        
+        if (not pending[item]) then
+          st:addRow({itemData.source, item, '&lt;red&gt;removed'})
+        end
+
+      end      
+      
+      cecho(st:assemble())
+    
+    end)
+    
+  end)
+
+end
+
+
+catalog.prevLines = 500
+catalog.prevCols = 300
+
+catalog.setColors = function(cb)
+
+  tempRegexTrigger([[^\s+Paging \(Lines\): (?:at )?(disabled|automatic|\d+)(?: lines)?$]], function()
+    catalog.prevLines = matches[2]  
+    if (catalog.prevLines == 'disabled') then catalog.prevLines = 'disable' end
+  end, 1)
+
+  tempRegexTrigger([[^\s+Wrapping \(Columns\): (?:at )?(disabled|automatic|\d+)(?: characters)?$]], function()
+    catalog.prevCols = matches[2]
+
+    if (cb) then
+      tempRegexTrigger([[^Wrapping is now disabled\.$]], cb, 1);
+    end
+    
+    send('color lines 500 &amp; color columns disable')
+    
+  end, 1)
+
+  
+  send('color') 
+
+end
+
+catalog.resetColors = function(cb)
+  
+  if (cb) then
+    tempRegexTrigger([[^Wrapping (is disabled|set to|will now be)]], cb, 1);
+  end
+  send('color lines ' .. tostring(catalog.prevLines) .. ' &amp; color columns ' .. tostring(catalog.prevCols))  
+
+end
+
+
+catalog.getAllItems = function(cb, options)
+ 
+  -- catalog.setColors(function()
+    
+    catalog.getItemList(function(itemList)
+    
+      catalog.itemGetLoop(itemList, function(items)
+        -- restore previous settings
+        -- catalog.resetColors()
+        cecho('\n\n&lt;green&gt;CATALOG:&lt;white&gt; parsed all items in catalog!\n\n') 
+        cb(items)  
+        
+      end)
+
+    end, options)
+    
+  -- end)
+
+
+end
+
+
+catalog.itemGetLoop = function(items, cb)
+  
+  local dt = getEpoch()
+
+  local newItems = {}
+  
+  local co
+
+  co = coroutine.create(function()
+  
+    for itemId, itemStub in pairs(items) do 
+    
+      -- display(itemId)
+      
+      catalog.getItem(itemId, function(item) 
+        
+        item.name = itemStub.name
+        item.itemType = itemStub.itemType
+        item.datetime = dt
+        
+        item.source = gmcp.Char.Score.account
+        item.sourceDT = getEpoch()
+        item.itemVersion = itemVersion        
+
+        newItems[item.name] = item
+        
+        coroutine.resume(co)
+      end)
+      
+      coroutine.yield()
+    
+    end
+    
+    cb(newItems)
+  
+  end)
+
+  coroutine.resume(co)
+
+
+end
+
+
+
+
+
+catalog.getItemList = function(cb, options)
+  
+  catalog.localItems = catalog.localItems or {}
+  
+  options = options or {}
+
+  tempRegexTrigger([[^Number\s+Name\s+Level\s+Type\s*$]], function()
+  
+    cecho('\n&lt;green&gt;CATALOG: &lt;white&gt;parsing catalog list\n\n')
+    
+    local temptrigs = {}
+    local items = {}
+    
+    -- trigger to hit enter on any "more" prompts
+    -- temptrigs.moreCatcher = tempRegexTrigger([[^\s*--\s+MORE\s+--\s*&lt;]], function ()
+      -- send('\n')
+      -- -- send('sigh')
+      -- cecho('\n&lt;green&gt;CATALOG: &lt;white&gt;continuing catalog listing\n\n')
+    -- end)
+    
+    
+    temptrigs.catEntryCatcher = tempRegexTrigger([[^\[\s*(\d+)\]\s*(.+?)\s+(\d+)\s+(\S+)]], function ()
+      
+      catalog.localItems[matches[2]] = matches[3]
+      
+      
+      -- check to see if this is a new item
+      if (options.checkEverything or 
+          not catalog.items[matches[3]] or 
+          not catalog.items[matches[3]].itemVersion or
+          catalog.items[matches[3]].itemVersion &lt; itemVersion
+      ) then
+        cecho(' &lt;-- &lt;green&gt;CATALOG: &lt;white&gt;new item\n')
+        items[matches[2]] = {
+          name = matches[3],
+          -- level = tonumber(matches[4]),
+          itemType = matches[5],
+        }
+      end
+    end)
+    
+
+    -- next regular prompt means we're done
+    tempPromptTrigger(function()
+    
+    
+      -- killTrigger(temptrigs.moreCatcher)
+      killTrigger(temptrigs.catEntryCatcher)
+      -- temptrigs.moreCatcher = nil
+      temptrigs.catEntryCatcher = nil
+      cecho('\n&lt;green&gt;CATALOG: &lt;white&gt;catalog listing ended\n\n')
+      cb(items)
+    end, 1)  
+  
+  end, 1)
+  
+  if (options.searchText) then
+    send('$catalog ' .. options.searchText)
+  else
+    send('$catalog')
+  end
+
+end
+
+
+local splitString = function(str) 
+  local ret = {}
+  for i in str:gmatch("[^ ,]+") do
+     table.insert(ret, i)
+  end
+  return ret
+end
+
+local joinString = function(tbl, joiner)
+  local str = ''
+  for k, v in pairs(tbl) do
+    str = str .. v .. joiner
+  end
+  return str
+end
+
+
+catalog.parseItemLine = function (line, item)
+    
+  if (item.parsingStarted and not item.parsingEnding) then 
+  
+    table.insert(item.buffer, line)
+    
+    -- find anything like "foo: bar"
+    for i, j in rex.gmatch(line, [[(?:\s\s+|^\s*)(\S+[ -]?\S+):\s+(\S.*?)(?:\s\s|\s*$)]]) do
+      -- display(i,j)
+      item[i] = j
+    end
+    
+    
+  end       
+ 
+  
+  -- catch affects
+  
+  if (item.matchAffects) then
+    
+    
+    item.affects = item.affects or {}
+    
+    if line == '' then
+      item.matchAffects = nil
+    else
+    
+      local aff = rex.gsub(line, [[^\s+]], '')
+        
+      if (affectMissingDot[aff]) then
+        cecho(' &lt;red&gt;&lt;-- broken affect: &lt;white&gt;' .. aff .. '\n')
+        aff = aff .. '.'
+      end
+        
+      -- handle affects that are split over two lines (no . on the end of em :p)
+      if (#item.affects &gt; 0) then
+        
+        local lastItem = item.affects[#item.affects]
+ 
+        if rex.match(lastItem, [[\.$]]) then
+          table.insert(item.affects, aff)
+        else
+          lastItem = lastItem .. ' ' .. aff
+          item.affects[#item.affects] = lastItem
+        end
+      else
+        table.insert(item.affects, aff)
+      end  
+    end
+    
+  end
+  
+  
+  
+  -- turn on match affects for subsequent lines if needed:
+  if (rex.match(line, [[^\s*Affects:]])) then
+    	item.matchAffects = true
+  end     
+  
+  
+end
+    
+    
+catalog.processItem = function(item)
+
+  -- clear things we don't want to record
+  item.parsingEnding = nil
+  item.parsingStarted = nil
+
+  -- reformat affects
+  if (item.affects) then
+    local newAffects = {}
+    for k, v in pairs(item.affects) do
+      local aff = { name = v, type = 'affect' }
+      if (rex.match(v, [[ by [+-]\d+\.?\d*\.$]])) then
+        aff.name = rex.gsub(v, [[^(.*)( by .*)$]], '%1')
+        aff.type = 'property'
+        aff.amount = rex.gsub(v, [[^(.* by \+?)(.*)\.$]], '%2')
+        aff.amount = tonumber(aff.amount)
+      end
+      table.insert(newAffects, aff)
+    end
+    item.affects = newAffects
+  end
+  
+  -- reformat things which are arrays
+  local arrayProps = { 'Restrictions', 'Wear Loc.', 'Layer', 'Anti-Flags', 'Materials' } 
+  
+  for i, k in ipairs(arrayProps) do
+    if (item[k]) then
+      item[k] = string.split(item[k], ', ')
+    end
+  end
+  
+  -- turn numbers back into numbers
+  for key, val in pairs(item) do
+  
+    if (not table.contains(arrayProps, key) and not table.contains({'buffer', 'affects'}, key)) then
+      
+      local match = rex.match(val, [[^(\d+(\.\d+)?)(?:\s+lbs|%)?$]])
+      
+      if (match) then
+        item[key] = tonumber(match)
+      end
+        
+    end
+  
+  end
+  
+  -- if item has Damage calc the average damage:
+    if(item.Damage) then
+      rex.gsub(item.Damage, [[^(\d+)d(\d+)\+?(\d+)?$]], function(n, d, b)
+        item.averageDamage = ((d + 1) / 2) * n
+        if (b) then 
+         item.averageDamage = item.averageDamage + b 
+        end
+    end)
+  end
+  
+  
+  item["Unidentified Name"] = rex.gsub(item.buffer[1], [[^\s*(.+?)\s*$]], '%1')
+  
+  item.buffer = joinString(item.buffer, '\n')
+
+end    
+    
+    
+    
+    
+catalog.getItem = function(itemId, cb)
+  
+  tempRegexTrigger([[You read catalog entry #]] .. tostring(itemId) .. [[\.$]], function ()
+    
+    local catalogId = matches[3]
+    
+    cecho('\n&lt;green&gt;CATALOG: &lt;white&gt;parsing an item\n\n')
+    
+    local item = { 
+      buffer = {}, 
+    }
+    
+    
+    local temptrigs = {}
+    
+      
+    temptrigs.catEntryCatcher = tempRegexTrigger([[^.*$]], function()
+      
+      local line = matches[1]
+      
+      if (rex.match(line, [[^\s*(-=)+-\s*$]])) then
+      
+        if (item.parsingStarted) then
+          
+          item.parsingEnding = true
+  
+          catalog.processItem(item)
+    
+          -- display(item)
+          
+          cb(item)        
+      
+          -- kill those triggers
+          for k, v in pairs(temptrigs) do
+            killTrigger(v)
+          end
+                    
+        else
+          item.parsingStarted = true
+        end
+        
+      else
+      
+        catalog.parseItemLine(line, item, cb)
+        
+      end    
+
+    end)
+
+  end, 1) -- end of read catalog entry temp regex.
+
+
+  send('catalog -b ' .. tostring(itemId))
+
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>audit</name>
+				<packageName />
+				<script>
+catalog = catalog or {}
+catalog.player = catalog.player or {}
+catalog.player.gear = catalog.player.gear or {}
+
+catalog.player.stats = catalog.player.stats or {
+  Con = 15,
+  Dex = 15,
+  Int = 15,
+  Str = 15,
+  Wis = 15,
+  Magic = 0,
+  Fire = 0,
+  Cold = 0,
+  Mind = 0,
+  Electric = 0,
+  Acid = 0,
+  Poison = 0,    
+} 
+
+
+catalog.getSkills = function(cb)
+  catalog.common.onNextEvent(catalog.events.PARSED_ABILITIES, function()
+    cecho('&lt;green&gt;CATALOG&lt;white&gt;: parsed player skills\n')
+    cb(player.skills)
+  end)
+  send('|$abil all')
+end
+  
+catalog.getStats = function(cb)
+  catalog.common.onNextEvent(catalog.events.PARSED_SCORE, function(_, stats)
+    cecho('&lt;green&gt;CATALOG&lt;white&gt;: parsed player skills\n')    
+    cb(stats)        
+  end)
+  send('|score')
+end  
+
+catalog.getIdentity = function(cb)
+  catalog.common.onNextEvent(catalog.events.PARSED_IDENTITY, function(_, identity)
+    cecho('&lt;green&gt;CATALOG&lt;white&gt;: parsed player identity\n')    
+    cb(identity)        
+  end)
+  send('|identity')
+end 
+
+
+
+catalog.isWearing = function(item)
+  
+  if (type(item) ~= 'table') then  
+    item = {item}    
+  end
+  
+    
+      
+  for slot, layers in pairs(catalog.player.gear) do
+    for layer, itemRecord in pairs(layers) do      
+      local thisItem = rex.gsub(itemRecord.item,[[(\s+\+\d)$]],'')      
+      if table.contains(item, thisItem) then
+        return true
+      end
+    end
+  end
+  
+  return false
+
+end
+
+
+catalog.slotConversion = { 
+  ["waist"] = "waist", 
+  ["left hand finger"] = "finger", 
+  ["head"] = "head", 
+  ["neck"] = "neck", 
+  ["right hand"] = "right_hand", 
+  ["right_hand"] = "right_hand", 
+  ["left hand"] = "left_hand",
+  ["left_hand"] = "left_hand",
+  ["nearby"] = "float_nearby", 
+  ["float_nearby"] = "float_nearby", 
+  ["body"] = "body", 
+  ["right hand finger"] = "finger", 
+  ["finger"] = "finger", 
+  ["right wrist"] = "wrist", 
+  ["arms"] = "arms", 
+  ["hands"] = "hands", 
+  ["feet"] = "feet", 
+  ["legs"] = "legs", 
+  ["left wrist"] = "wrist", 
+  ["wrist"] = "wrist", 
+  ["horse_body"] = "horse_body", 
+  ["horse_foot"] = "horse_foot", 
+  ["horse_back"] = "horse_back", 
+}
+
+
+-- sort catalog into slot/layers
+
+catalog.getItemsBySlotLayer = function()
+
+  local slots = {}
+  
+  for idx, item in pairs(catalog.items) do 
+  
+    if item["Wear Loc."] and #item["Wear Loc."] and item["Layer"] and #item["Layer"] then
+    
+      for idx, slot in ipairs(item["Wear Loc."]) do 
+      
+        -- think a slot may have been remaned at some point?
+        -- we can correct that here if it's the case
+        slot = catalog.slotConversion[slot]
+        
+        if (not slot) then
+          cecho('&lt;red&gt;wtf: ' .. oslot .. '\n\n')
+        end
+        
+          for idx, layer in ipairs(item["Layer"]) do
+          
+              slots[slot] = slots[slot] or {}
+              slots[slot][layer] = slots[slot][layer] or {}
+              table.insert(slots[slot][layer], item)
+            
+          end -- layers
+        
+      end -- slots
+      
+    end
+    
+  
+  end
+
+  return slots
+  
+end
+
+
+catalog.sanitizeItemName = function(itemName)
+  
+  itemName = itemName:lower()
+  itemName = rex.gsub(itemName,[[^(the |a |an )]], '')  
+  itemName = rex.gsub(itemName,[[^(pair of |set of)]], '')    
+  itemName = rex.gsub(itemName, [[(.*) labeled .*$]], 'an empty %1')    
+  itemName = rex.gsub(itemName,[[ \+\d$]], '')
+  itemName = rex.gsub(itemName, [[ (contains|containing) .*$]], '')  
+  
+  
+-- Missing ID - an enchanted journeyman's astrolabe
+-- Missing ID - an enchanted eldrich bracelet
+
+-- Missing ID - a pair of enchanted herbal anklets
+
+-- Missing ID - a feather-patterned white leather sack labeled meat
+  return catalog.common.itemSanitize(itemName)
+end
+
+catalog.findItem = function(itemName, items, allowMultipleExact) 
+
+  items = items or catalog.items
+ 
+  local iname = catalog.sanitizeItemName(itemName)
+
+  local mResults = {}
+
+  for idx, item in pairs(items) do 
+    
+    if (
+      (item.searchItemName == iname) or 
+      (item.searchUnidentifiedItemName == iname)      
+    ) then
+      
+      if allowMultipleExact then
+        table.insert(mResults, item)
+      else
+        return item
+      end
+    end
+    
+  end
+  
+  if allowMultipleExact and #mResults &gt; 0 then
+    return mResults
+  end  
+  
+  -- lets  match things that contain the the string, so that 
+  -- "tear-shaped jewel" matches "floating tear-shaped jewel"
+  for idx, item in pairs(items) do 
+    
+    if (
+      (item.searchItemName:ends(iname)) or 
+      (item.searchUnidentifiedItemName:ends(iname))      
+    ) then
+      
+      if allowMultipleExact then
+        table.insert(mResults, item)
+      else
+        return item
+      end
+    end
+    
+  end  
+  
+  if allowMultipleExact and #mResults &gt; 0 then
+    return mResults
+  end   
+      
+  if (rex.match(iname, [[^an empty]])) then
+    return catalog.findItem(rex.gsub(iname, [[^an empty ]], 'a closed '), items, allowMultipleExact)
+  end
+  
+  
+  -- maybe we need to get rid of a plural? (seems unlikely)
+  local siname = rex.gsub(iname, [[e?s$]], '')
+  
+  if (siname ~= iname) then
+    return catalog.findItem(siname, items, allowMultipleExact)
+  end
+     
+  
+  if allowMultipleExact and #mResults &gt; 0 then
+    return mResults
+  end    
+   
+end
+
+
+catalog.getSlotLayerItem = function(slot, layer, itemName)
+ 
+  slot = catalog.slotConversion[slot]
+  
+  catalog.slots[slot] = catalog.slots[slot] or {}
+  catalog.slots[slot][layer] = catalog.slots[slot][layer] or {}
+
+  return catalog.findItem(itemName, catalog.slots[slot][layer])
+  
+end
+
+
+ </script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>search</name>
+				<packageName />
+				<script>catalog.itemNativeAffects = {
+  ["Armor Class"] = true,
+  ["Base Cost"] = true,
+  ["Global Armor"] = true,
+  ["Remort Level"] = true,
+}
+
+-- everyone should be a reaver so these are great defaults ;-)
+catalog.weights = catalog.weights or {
+  damroll = 1.5,
+  hitroll = 0.5,
+  dexterity = 2,
+  constitution = 1.5,
+  resist = 0.1,
+  mana_regen = 0.5,
+  move_regen = 0.75,
+  hit_regen = 0.05,
+  hit_points = 0.02,
+  ["Armor Class"] = 0.05,
+  ["Global Armor"] = 0.15,
+  deflection = 0.25,
+  ["Second Attack"] = 2,
+  ["Third Attack"] = 2,
+  ["Fourth Attack"] = 2,
+  ["Fifth Attack"] = 2,
+  ["off-hand attack"] = 2, 
+  ["second off-hand attack"] = 2,  
+  doublecross = 2,
+  ["chaos beacon"] = 2,
+  pandemonium = 2,
+  bedlam = 2,
+  doublefeint = 2,
+  doublevision = 3,  
+}
+
+
+catalog.getAffectIfHasSkill = function(item, skill)
+  local iSkill = catalog.getAffect(item, skill)        
+  if (player.skills) then        
+    if (player.skills[skill] and player.skills[skill] &gt; 0) then
+      return iSkill
+    else
+      return 0  
+    end        
+  else        
+    return iSkill          
+  end      
+end
+
+catalog.getCappedMaxRes = function(stats, type, amt) 
+  local currentMax = 100 - ((stats and stats[type]) or 0)
+  return math.min(amt, currentMax)
+end
+
+catalog.getAffect = function(item, affect, excludeWeaponDam, stats, showWeightDebug)
+    
+  stats = stats or {
+    Con = 15,
+    Dex = 15,
+    Int = 15,
+    Str = 15,
+    Wis = 15,
+    Magic = 0,
+    Fire = 0,
+    Cold = 0,
+    Mind = 0,
+    Electric = 0,
+    Acid = 0,
+    Poison = 0,    
+  } 
+  
+      
+  if catalog.itemNativeAffects[affect] and item[affect] and item[affect] ~= '' then
+
+    local amount = item[affect]
+    
+    -- rabies: looks like negative numbers are stored as strings
+    if type(amount) == 'string' then
+      amount = tonumber(amount)
+    end
+
+    return amount
+    
+  end    
+  
+  affect = affect:lower()
+
+  -- adding a fake affect so we can still get pseudo affects like armor class
+  item.affects = item.affects or {
+    { amount = 0, name = 'placeholder', type = 'pseudo' }
+  }
+  
+
+  if (item.affects) then
+    
+    local hasRegen = false
+    
+    local hasAff = false
+    local affAmt = 0
+    
+    local regenAmt = 0
+    
+    local hasDamage = false
+    local damAmt = 0
+    
+    local hasProp = false
+    local propVal = 0
+  
+    for idx, aff in ipairs(item.affects) do 
+    
+      if (aff.type == 'affect' and aff.name:lower() == affect) then
+        
+        return 1
+        
+      end
+      
+      if (affect == 'weighted') then
+                  
+        for affect, weight in pairs(catalog.weights) do
+          local amt = catalog.getAffect(item, affect, nil, stats)
+          
+          if amt ~= 0 then      
+
+            if (showWeightDebug) then              
+
+    
+              cecho(demonnic:cfText('&lt;white&gt;' .. affect .. ':&lt;reset&gt; ', {alignment = "right", width = 31, nogap=true}) .. tostring(amt * weight) .. '\n')
+            end
+            
+            affAmt = affAmt + (amt * weight)
+          end
+        end         
+        
+        if (showWeightDebug) then
+          cecho('\n' .. demonnic:cfText('&lt;white&gt;total weight:&lt;reset&gt; ', {alignment = "right", width = 31, nogap=true}) .. tostring(affAmt) .. '\n')
+        end
+        
+        return affAmt         
+      
+      elseif (affect == 'strength') then
+        
+        if aff.name:lower() == 'strength' then
+          hasAff = true
+          if (stats.Str &lt; 30 or aff.amount &lt; 0) then
+            affAmt = aff.amount
+          end
+        end         
+
+      elseif (affect == 'intelligence') then
+        
+        if aff.name:lower() == 'intelligence' then
+          hasAff = true
+          if (stats.Int &lt; 30 or aff.amount &lt; 0) then
+            affAmt = aff.amount
+          end
+        end  
+
+      elseif (affect == 'wisdom') then
+        
+        if aff.name:lower() == 'wisdom' then
+          hasAff = true
+          if (stats.Wis &lt; 30 or aff.amount &lt; 0) then
+            affAmt = aff.amount
+          end
+        end  
+
+      elseif (affect == 'dexterity') then
+        
+        if aff.name:lower() == 'dexterity' then
+          hasAff = true
+          if (stats.Dex &lt; 30 or aff.amount &lt; 0) then
+            affAmt = aff.amount
+          end
+        end  
+
+      elseif (affect == 'constitution') then
+        
+        if aff.name:lower() == 'constitution' then
+          hasAff = true
+          if (stats.Con &lt; 30 or aff.amount &lt; 0) then
+            affAmt = aff.amount
+          end
+        end  
+              
+      elseif (affect == 'smart') then
+        
+        if stats.Int &lt; 30 and aff.name:lower() == 'intelligence' then
+          hasAff = true
+          affAmt = affAmt + aff.amount          
+        end    
+
+        if stats.Wis &lt; 30 and aff.name:lower() == 'wisdom' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end      
+        
+      elseif (affect == 'skills') then
+        
+        local thisAff = aff.name:lower()
+
+        if (player and player.skills and player.skills[thisAff] and player.skills[thisAff] &gt; 0) then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end        
+      
+      elseif (affect == 'magic') then
+        
+        if stats.Int &lt; 30 and aff.name:lower() == 'intelligence' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 2)
+        end    
+
+        if stats.Wis &lt; 30 and aff.name:lower() == 'wisdom' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 1)
+        end  
+ 
+        if aff.name:lower() == 'magic' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end      
+       
+      elseif (affect == 'mind') then
+        
+        if stats.Int &lt; 30 and aff.name:lower() == 'intelligence' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 1)
+        end    
+
+        if stats.Wis &lt; 30 and aff.name:lower() == 'wisdom' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 2)
+        end  
+ 
+        if aff.name:lower() == 'mind' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end  
+        
+        -- affAmt = catalog.getCappedMaxRes(stats, 'Mind', affAmt)
+        
+        -- display(affAmt)
+       
+      elseif (affect == 'poison') then
+        
+        if stats.Con &lt; 30 and aff.name:lower() == 'constitution' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 2)
+        end    
+ 
+        if aff.name:lower() == 'poison' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end   
+        
+      -- elseif (affect == 'resist') then
+-- 
+ -- 
+        -- if table.contains({'fire', 'cold', 'electricity', 'acid', 'magic', 'mind', 'poison'}, aff.name:lower()) then
+          -- hasAff = true
+          -- affAmt = affAmt + aff.amount
+        -- end   
+         -- 
+        -- -- magic + mind
+        -- if stats.Int &lt; 30 and aff.name:lower() == 'intelligence' then
+          -- hasAff = true
+          -- affAmt = affAmt + (aff.amount * 3)
+        -- end    
+-- 
+        -- if stats.Wis &lt; 30 and aff.name:lower() == 'wisdom' then
+          -- hasAff = true
+          -- affAmt = affAmt + (aff.amount * 3)
+        -- end  
+   -- 
+        -- -- poison
+        -- if stats.Con &lt; 30 and aff.name:lower() == 'constitution' then
+          -- hasAff = true
+          -- affAmt = affAmt + (aff.amount * 2)
+        -- end         
+
+        
+      elseif (affect == 'regen') then
+
+        
+        if aff.name:lower() == 'mana_regen' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end
+                
+        if aff.name:lower() == 'hit_regen' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end        
+        
+        if aff.name:lower() == 'move_regen' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end        
+        
+      elseif (affect == 'hit_regen') then
+      
+        if stats.Con &lt; 30 and aff.name:lower() == 'constitution' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 0.6)
+        end
+        
+        if aff.name:lower() == 'hit_regen' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end
+       
+      elseif (affect == 'mana_regen') then
+      
+        if stats.Int &lt; 30 and aff.name:lower() == 'intelligence' then
+          hasAff = true
+          affAmt = affAmt + (aff.amount * 0.2)
+        end
+        
+        if aff.name:lower() == 'mana_regen' then
+          hasAff = true
+          affAmt = affAmt + aff.amount
+        end
+      
+      elseif (affect == 'damroll') then
+      
+        if stats.Str &lt; 30 and aff.name:lower() == 'strength' then
+          hasDamage = true
+          damAmt = damAmt + (aff.amount * 0.33)
+        end
+        
+        if aff.name:lower() == 'damroll' then
+          hasDamage = true
+          damAmt = damAmt + aff.amount
+        end       
+    
+      elseif (aff.type == 'property' and aff.name:lower() == affect) then
+
+        -- count global ac as deflection
+        if (affect == 'deflection') then
+          hasProp = true
+          propVal = aff.amount
+        else       
+
+          return aff.amount
+        end
+ 
+      end
+    end -- looping over affects
+    
+    if (hasAff) then
+      
+      -- 'fire', 'cold', 'electricity', 'acid', 'magic', 'mind', 'poison'
+      if (affect == 'mind') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Mind', affAmt)
+      elseif (affect == 'magic') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Magic', affAmt)
+      elseif (affect == 'fire') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Fire', affAmt)
+      elseif (affect == 'cold') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Cold', affAmt)
+      elseif (affect == 'electricity') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Electric', affAmt)
+      elseif (affect == 'acid') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Acid', affAmt)
+      elseif (affect == 'poison') then
+        affAmt = catalog.getCappedMaxRes(stats, 'Poison', affAmt)
+      end
+    
+      return affAmt
+    end     
+    
+    if (affect == 'deflection') then
+      local gac = tonumber(item['Global Armor'] or 0)
+
+      local defSkills = 
+      
+        catalog.getAffectIfHasSkill(item, 'dodge') * 2 + 
+        catalog.getAffectIfHasSkill(item, 'tumble') * 1 + 
+        catalog.getAffectIfHasSkill(item, 'guard') * 5 + 
+        catalog.getAffectIfHasSkill(item, 'parry') * 4 + 
+        catalog.getAffectIfHasSkill(item, 'quickstep') * 5  -- this is a guess
+                      
+      return propVal + gac + defSkills    
+    end
+  
+    if (affect == 'resist') then
+      local totalRes = 0
+      
+      local resistTypes = {'fire', 'cold', 'electricity', 'acid', 'magic', 'mind', 'poison'}
+      
+      for idx, resType in ipairs(resistTypes) do
+        totalRes = totalRes + catalog.getAffect(item, resType, excludeWeaponDam, stats)
+      end
+      
+      return totalRes                  
+      
+    end  
+  
+  
+    if (affect == 'damroll' and (hasDamage or item.averageDamage)) then
+      if (excludeWeaponDam) then
+        return damAmt
+      else
+        return (item.averageDamage or 0) + damAmt
+      end
+    end
+  
+  else -- item has no affects  
+
+    if (affect == 'damroll' and item.averageDamage) then
+      if (not excludeWeaponDam) then
+        return (item.averageDamage or 0)
+      end
+    end    
+
+  end
+  
+  return 0
+  
+end   
+
+
+
+catalog.hasAffect = function(item, affect, filterType, filterAmount, includeWeaponDamage, stats)
+    
+  if (filterAmount ~= '') then
+    filterAmount = tonumber(filterAmount)
+  end
+    
+  local amount = catalog.getAffect(item, affect, nil, stats)
+  
+  if (amount ~= 0) then
+    if (
+      filterType == '' or 
+      filterType == nil or 
+      filterAmount == '' or
+      (filterType == 'gt' and amount &gt; filterAmount) or 
+      (filterType == 'gte' and amount &gt;= filterAmount) or 
+      (filterType == 'lt' and amount &lt; filterAmount) or
+      (filterType == 'lte' and amount &lt;= filterAmount) or
+      1 == 0
+    ) then
+      return true
+    end
+  end  
+
+  return false
+end   
+
+
+catalog.search = function(searchString, stats)
+  
+  -- display(searchString, stats)
+    
+  local results = {}  
+    
+  local levQuery, levMin, levMax = rex.match(searchString, [[( -l (\d+)-?(\d*))]])
+  
+  if (levQuery) then
+    searchString = rex.gsub(searchString, levQuery, '')
+    levMin = tonumber(levMin)
+    if (levMax == '') then
+      levMax = levMin
+    else
+      levMax = tonumber(levMax)
+    end
+  end
+  
+  
+  -- this one might be overriden by something else forcing an item type (i.e --two-handed)
+  local itemTypeQuery, itemType = rex.match(searchString, [[( -t (\w+))]])
+  if (itemTypeQuery) then
+    searchString = rex.gsub(searchString, itemTypeQuery, '')
+  end
+    
+  
+  local weapQuery, weapType = rex.match(searchString, [[( -W (\w+))]])
+  if (weapQuery) then
+    searchString = rex.gsub(searchString, weapQuery, '')
+    itemTypeQuery = true
+    itemType = 'weapon'    
+  end
+  
+  local weapDpsQuery, weapDPS = rex.match(searchString, [[( -d (\d+\.?\d*))]])
+  if (weapDpsQuery) then
+    searchString = rex.gsub(searchString, weapDpsQuery, '')
+    weapDPS = tonumber(weapDPS)
+  end
+
+  local afterQuery, year, month, day = rex.match(searchString, [[( --after (\d+)[/-](\d+)[/-](\d+))]])
+  local afterTime
+  if (afterQuery) then
+    searchString = rex.gsub(searchString, afterQuery, '')
+    afterTime = os.time({day=day,month=month,year=year}) 
+    -- display(year,month,day, afterTime)
+  end  
+  
+  if (not afterQuery) then
+    afterQuery, days = rex.match(searchString, [[( --days (\d+))]])
+    if (afterQuery) then
+      searchString = rex.gsub(searchString, afterQuery, '')      
+      afterTime = getEpoch() - (tonumber(days) * 24 * 60 * 60) 
+      -- display(days, getEpoch(), afterTime)
+    end
+  end    
+
+  local limitResults = 10
+  local limitQuery, limitString = rex.match(searchString, [[( --limit (\d+))]])
+  if (limitQuery) then
+    limitResults = tonumber(limitString)
+    searchString = rex.gsub(searchString, limitQuery, '')
+  end  
+
+  
+  local alignQuery, align = rex.match(searchString, [[( -A (\w\w))]])
+  if (alignQuery) then
+    searchString = rex.gsub(searchString, alignQuery, '')
+  end
+    
+  local classQuery, charClass = rex.match(searchString, [[( -c (\w+))]])
+  if (classQuery) then
+    searchString = rex.gsub(searchString, classQuery, '')
+  end
+  
+  local genderQuery, gender = rex.match(searchString, [[( -g (\w+))]])
+  if (genderQuery) then
+    searchString = rex.gsub(searchString, genderQuery, '')
+  end
+  
+  local raceQuery, race = rex.match(searchString, [[( -r (\w+))]])
+  if (raceQuery) then
+    searchString = rex.gsub(searchString, raceQuery, '')
+    race = rex.gsub(race, 'lizardman', 'lizardfolk')    
+  end
+      
+  
+  local itemLocationQuery, location, layer = rex.match(searchString, [[( -w (\w+)\.?(\w*))]])
+  if (itemLocationQuery) then
+    searchString = rex.gsub(searchString, itemLocationQuery, '')
+  end
+  
+  local itemLayerQuery, xlayer = rex.match(searchString, [[( -p (\w+))]])
+  if (itemLayerQuery) then
+    layer = xlayer
+    searchString = rex.gsub(searchString, itemLayerQuery, '')
+  end
+  
+  
+  local useUnIDnameSearch = rex.match(searchString, [[( -b)]])
+  if (useUnIDnameSearch) then
+    searchString = rex.gsub(searchString, useUnIDnameSearch, '')
+  end
+  
+  local affectQuery, affect, affectFilterType, affectFilterVal = rex.match(searchString, [[( -a (".+?"|\w+)\.?(gte|lte|gt|lt|)\.?(-?\d*\.?\d*))]])
+  if (affectQuery) then
+    affect = rex.gsub(affect, [[^"(.*)"$]], '%1')
+    searchString = rex.gsub(searchString, affectQuery, '')
+  end
+ 
+  local twoHandQuery = rex.match(searchString, [[( --two-handed)]])
+  if (twoHandQuery) then
+    searchString = rex.gsub(searchString, twoHandQuery, '')
+    itemTypeQuery = true
+    itemType = 'weapon'    
+  end  
+ 
+  local offHandQuery = rex.match(searchString, [[( --off-hand)]])
+  if (offHandQuery) then
+    searchString = rex.gsub(searchString, offHandQuery, '')
+    location = 'left hand'
+    itemLocationQuery = true
+    layer = 'base'
+    itemLayerQuery = true
+    itemType = 'weapon'
+    itemTypeQuery = true
+  end   
+  
+ 
+  local mainHandQuery = rex.match(searchString, [[( --main-hand)]])
+  if (mainHandQuery) then
+    searchString = rex.gsub(searchString, mainHandQuery, '')
+    location = 'right hand'
+    itemLocationQuery = true
+    layer = 'base'
+    itemLayerQuery = true
+    itemType = 'weapon'
+    itemTypeQuery = true
+  end     
+  
+  -- display(levQuery, levMin, levMax)
+  
+  
+  -- remove the leading space we added (and any the user added)
+  searchString = rex.gsub(searchString, [[^\s+]], '')
+  
+  
+  -- display('ss: [' .. searchString .. ']')
+  
+  -- if query has params pass through to the old catalog for now
+  
+  if (rex.match(searchString, ' -')) then
+    cecho('\n&lt;orange&gt;TFECAT: &lt;white&gt;unknown tcat search option...\n\n')
+    -- send(matches[1], false)
+    return
+  end
+  
+  
+  
+  if (rex.match(searchString, [[^\d+$]])) then
+    return {tonumber(searchString)}
+  end
+
+  for idx, item in ipairs(catalog.itemsIndex) do
+  
+    local data = catalog.items[item]
+    local flags = catalog.itemCalculated[idx]
+    
+    -- display(data, flags)
+    
+    if (
+      (searchString == '' or rex.match(data.name .. ' ' .. data['Unidentified Name'], [[(?i)]] .. searchString)) and
+      (not levQuery or data.Level &lt;= levMax and data.Level &gt;= levMin) and
+      (not weapQuery or (data.itemType == 'weapon' and data.Class == weapType)) and
+      -- weapDpsQuery, weapDPS
+      (not weapDpsQuery or (data.itemType == 'weapon' and data.averageDamage &gt;= weapDPS)) and
+      -- --itemTypeQuery, itemType
+      (not itemTypeQuery or data.itemType == itemType) and
+      -- -- (itemLocationQuery, location, layer  
+      (not itemLocationQuery or table.contains(data["Wear Loc."],catalog.slotConversion[location])) and
+      (layer == nil or layer == '' or table.contains(data.Layer,layer)) and
+      -- affectQuery, affect
+      (not affectQuery or catalog.hasAffect(data, affect, affectFilterType, affectFilterVal, includeWeaponDamage, stats)) and
+      
+      (not alignQuery or flags.charAlignments[align]) and
+      (not classQuery or flags.charClasses[charClass]) and
+      (not genderQuery or flags.charGenders[gender]) and
+      (not raceQuery or flags.charRaces[race]) and
+      
+      (not twoHandQuery or catalog.hasAffect(data, 'Requires two hands.')) and
+      (not mainHandQuery or not catalog.hasAffect(data, 'Requires two hands.')) and
+      
+      (not afterQuery or data.sourceDT &gt; afterTime) and
+      
+         -- 
+
+      1 == 1
+    ) then
+      
+      
+      
+      table.insert(results, idx)
+    
+    end -- end if valid  matchv
+  
+ 
+  end -- end loop over catalog index
+  
+      -- table.sort(results, function(a,b)   
+       -- 
+      -- local itemA = catalog.items[catalog.itemsIndex[a]]
+      -- local itemB = catalog.items[catalog.itemsIndex[b]]
+      -- 
+      -- return (itemA.averageDamage &gt; itemB.averageDamage) or 
+             -- (itemA.averageDamage == itemB.averageDamage and itemA.Level &gt; itemB.Level)
+             -- 
+    -- end)
+    
+    
+  
+  -- pre sort by item level
+  table.sort(results, function(a,b)   
+     
+    local itemA = catalog.items[catalog.itemsIndex[a]]
+    local itemB = catalog.items[catalog.itemsIndex[b]]
+    
+    return (itemA.Level &gt; itemB.Level)           
+  end)    
+  
+  
+  if (affectQuery or (itemTypeQuery and itemType == 'weapon')) then
+
+    if (itemTypeQuery and itemType == 'weapon') then
+      affect = affect or 'damroll'
+    end
+
+    table.sort(results, function(a,b)   
+       
+      local itemA = catalog.items[catalog.itemsIndex[a]]
+      local itemB = catalog.items[catalog.itemsIndex[b]]
+      
+      local valA = catalog.getAffect(itemA, affect, nil, stats)
+      local valB = catalog.getAffect(itemB, affect, nil, stats)
+      
+      return (valA &gt; valB)
+             
+    end)
+    
+  end
+  
+  if #results &gt; limitResults then
+    local rcount = #results
+    local rTemp = {}
+    for i = 1, limitResults do
+      table.insert(rTemp, results[i])
+    end
+    results = rTemp
+    results.limit = limitResults
+    results.totalCount = rcount
+  end
+
+  
+  return results, affect
+
+end</script>
+				<eventHandlerList />
+			</Script>
+		</ScriptGroup>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>demonnic</name>
+			<packageName />
+			<script>-------------------------------------------------
+--         Put your Lua functions here.        --
+--                                             --
+-- Note that you can also use external scripts --
+-------------------------------------------------
+</script>
+			<eventHandlerList />
+			<ScriptGroup isActive="yes" isFolder="yes">
+				<name>TextFormatter</name>
+				<packageName />
+				<script />
+				<eventHandlerList />
+				<Script isActive="yes" isFolder="no">
+					<name>standaloneFormatter</name>
+					<packageName />
+					<script>--- fText processing
+-- @module demonnic
+demonnic = demonnic or {}
+
+function demonnic:wordWrap(str, limit, indent, indent1)
+  -- pulled from http://lua-users.org/wiki/StringRecipes
+  indent = indent or ""
+  indent1 = indent1 or indent
+  limit = limit or 72
+  local here = 1-#indent1
+  local function check(sp, st, word, fi)
+    if fi - here &gt; limit then
+      here = st - #indent
+      return "\n"..indent..word
+    end
+  end
+  return indent1..str:gsub("(%s+)()(%S+)()", check)
+end
+
+function demonnic:fText(str, opts)
+  local options = demonnic:fixFormatOptions(str, opts)
+  if options.wrap and (options.strLen &gt; options.effWidth) then
+    local wrapped = demonnic:wordWrap(str, options.effWidth)
+    local lines = wrapped:split("\n")
+    local formatted = {}
+		options.fixed = false
+    for _,line in ipairs(lines) do
+      table.insert(formatted, demonnic:fLine(line, options))
+    end
+    return table.concat(formatted, "\n")
+  else
+    return demonnic:fLine(str, options)
+  end
+end
+
+function demonnic:fixFormatOptions(str, opts)
+  if opts.fixed then return table.deepcopy(opts) end
+  --Set up all the things we might call the different echo types
+  local dec = {"d", "decimal", "dec"}
+  local hex = {"h", "hexidecimal", "hex"}
+  local col = {"c", "color", "colour", "col", "name"}
+  if opts == nil then opts = {} end -- don't overwrite options if they passed them
+  --but if they passed something other than a table as the options than oopsie!
+  if type(opts) ~= "table" then
+    error("Improper argument: options expected to be passed as table")
+  end
+  --now we make a copy of the table, so we don't edit the original during all this
+  local options = table.deepcopy(opts)
+  if options.wrap == nil then options.wrap = true end --wrap by default.
+  options.formatType = options.formatType or "" --by default, no color formatting.
+  options.width = options.width or 80 --default 80 width
+  options.cap = options.cap or "" --no cap by default
+  options.spacer = options.spacer or " " --default spacer is the space character
+  options.alignment = options.alignment or "center" --default alignment is centered
+  if options.nogap == nil then options.nogap = false end
+  if options.inside == nil then options.inside = false end --by default, we don't put the spacer inside
+  if not options.mirror == false then options.mirror = options.mirror or true end--by default, we do want to use mirroring for the caps
+  --setup default options for colors based on the color formatting type
+  if table.contains(dec, options.formatType) then
+    options.capColor = options.capColor or "&lt;255,255,255&gt;"
+    options.spacerColor = options.spacerColor or "&lt;255,255,255&gt;"
+    options.textColor = options.textColor or "&lt;255,255,255&gt;"
+    options.colorReset = "&lt;r&gt;"
+    options.colorPattern = "&lt;%d+,%d+,%d+:?%d*,?%d*,?%d*&gt;"
+  elseif table.contains(hex, options.formatType) then
+    options.capColor = options.capColor or "#FFFFFF"
+    options.spacerColor = options.spacerColor or "#FFFFFF"
+    options.textColor = options.textColor or "#FFFFFF"
+    options.colorReset = "#r"
+    options.colorPattern = 'c|%d%d%d%d%d%d'
+  elseif table.contains(col, options.formatType) then
+    options.capColor = options.capColor or "&lt;white&gt;"
+    options.spacerColor = options.spacerColor or "&lt;white&gt;"
+    options.textColor = options.textColor or "&lt;white&gt;"
+    options.colorReset = "&lt;reset&gt;"
+    options.colorPattern = "&lt;%w*_?%w*:?%w*_?%w*&gt;"
+  else
+    options.capColor = ""
+    options.spacerColor = ""
+    options.textColor = ""
+    options.colorReset = ""
+    options.colorPattern = ""
+  end
+  options.originalString = str
+  options.strippedString = string.gsub(tostring(str), options.colorPattern, "")
+  options.strLen = string.len(options.strippedString)
+  options.leftCap = options.cap
+  options.rightCap = options.cap
+  options.capLen = string.len(options.cap)
+  local gapSpaces = 0
+  if not options.nogap then
+    if options.alignment == "center" then
+      gapSpaces = 2
+    else
+      gapSpaces = 1
+    end
+  end
+  options.nontextlength = options.width - options.strLen - gapSpaces
+  options.leftPadLen = math.floor(options.nontextlength / 2)
+  options.rightPadLen = options.nontextlength - options.leftPadLen
+  options.effWidth = options.width - ((options.capLen * gapSpaces) + gapSpaces)
+  if options.capLen &gt; options.leftPadLen then
+    options.cap = options.cap:sub(1, leftPadLen)
+    options.capLen = string.len(options.cap)
+  end
+  options.fixed = true
+  return options
+end
+
+function demonnic:fLine(str,opts)
+  local options = demonnic:fixFormatOptions(str,opts)
+  local leftCap = options.leftCap
+  local rightCap = options.rightCap
+  local leftPadLen = options.leftPadLen
+  local rightPadLen = options.rightPadLen
+  local capLen = options.capLen
+
+  if options.alignment == "center" then --we're going to center something
+    if options.mirror then --if we're reversing the left cap and the right cap (IE {{[[ turns into ]]}} )
+      rightCap = string.gsub(rightCap, "&lt;", "&gt;")
+      rightCap = string.gsub(rightCap, "%[", "%]")
+      rightCap = string.gsub(rightCap, "{", "}")
+      rightCap = string.gsub(rightCap, "%(", "%)")
+      rightCap = string.reverse(rightCap)
+    end --otherwise, they'll be the same, so don't do anything
+    if not options.nogap then str = string.format(" %s ", str) end
+
+  elseif options.alignment == "right" then --we'll right-align the text
+    leftPadLen = leftPadLen + rightPadLen
+    rightPadLen = 0
+    rightCap = ""
+    if not options.nogap then str = string.format(" %s", str) end
+
+  else --Ok, so if it's not center or right, we assume it's left. We don't do justified. Sorry.
+    rightPadLen = rightPadLen + leftPadLen
+    leftPadLen = 0
+    leftCap = ""
+    if not options.nogap then str = string.format("%s ", str) end
+  end--that's it, took care of both left, right, and center formattings, now to output the durn thing.
+  local fullLeftCap = string.format("%s%s%s", options.capColor, leftCap, options.colorReset)
+  local fullLeftSpacer = string.format("%s%s%s", options.spacerColor, string.rep(options.spacer, (leftPadLen - capLen)), options.colorReset)
+  local fullText = string.format("%s%s%s", options.textColor, str, options.colorReset)
+  local fullRightSpacer = string.format("%s%s%s", options.spacerColor, string.rep(options.spacer, (rightPadLen - capLen)), options.colorReset)
+  local fullRightCap = string.format("%s%s%s", options.capColor, rightCap, options.colorReset)
+
+  if options.inside then
+  -- "endcap===== some text =====endcap"
+  -- "endcap===== some text =====pacdne"
+  -- "endcap================= some text"
+  -- "some text =================endcap"
+    local finalString = string.format("%s%s%s%s%s", fullLeftCap, fullLeftSpacer, fullText, fullRightSpacer, fullRightCap)
+    return finalString
+  else
+  --"=====endcap some text endcap====="
+  --"=====endcap some text pacdne====="
+  --"=================endcap some text"
+  --"some text endcap================="
+
+    local finalString = string.format("%s%s%s%s%s", fullLeftSpacer, fullLeftCap, fullText, fullRightCap, fullRightSpacer)
+    return finalString
+  end
+end
+
+function demonnic:align(str, opts)
+  local options = {}
+  if opts == nil then
+    opts = {}
+  end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = ""
+		options.wrap = false
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fLine(str, options)
+end
+
+function demonnic:dalign(str, opts)
+  local options = {}
+  if opts == nil then
+    opts = {}
+  end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = "d"
+    options.wrap = false
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fLine(str, options)
+end
+
+function demonnic:calign(str, opts)
+  local options = {}
+  if opts == nil then
+    opts = {}
+  end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = "c"
+    options.wrap = false
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fLine(str, options)
+end
+
+function demonnic:halign(str, opts)
+  local options = {}
+  if opts == nil then
+    opts = {}
+  end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = "h"
+    options.wrap = false
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fLine(str, options)
+end
+
+function demonnic:cfText(str, opts)
+  local options = {}
+  if opts == nil then opts = {} end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = "c"
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fText(str, options)
+end
+
+function demonnic:dfText(str, opts)
+  local options = {}
+  if opts == nil then opts = {} end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = "d"
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fText(str, options)
+end
+
+function demonnic:hfText(str, opts)
+  local options = {}
+  if opts == nil then opts = {} end
+  if type(opts) == "table" then
+    options = table.deepcopy(opts)
+    options.formatType = "h"
+  else
+    error("Improper argument: options expected to be passed as table")
+  end
+  options = demonnic:fixFormatOptions(str, options)
+  return demonnic:fText(str, options)
+end
+
+function demonnic:test_ftext()
+  local testString = "This is a test of the emergency broadcast system. This is only a test. If this had been a real emergency, we would have given you more sensible information after this. But this was only a test."
+
+  local nTable = {width = 40, cap = "(CAP)", inside = true, alignment = 'center'}
+  local cTable = table.deepcopy(nTable)
+    cTable.formatType="c"
+    cTable.capColor = "&lt;red:black&gt;"
+    cTable.spacerColor = "&lt;purple:green&gt;"
+    cTable.textColor = "&lt;purple:green&gt;"
+
+  local dTable = table.deepcopy(nTable)
+    dTable.formatType="d"
+    dTable.capColor = "&lt;0,0,182&gt;"
+    dTable.spacerColor = "&lt;0,182,0&gt;"
+    dTable.textColor = "&lt;182,0,0&gt;"
+
+  local hTable = table.deepcopy(nTable)
+    hTable.formatType="h"
+    hTable.capColor = "#FF0000"
+    hTable.spacerColor = "#00FF00"
+    hTable.textColor = "#0000FF"
+  echo(string.rep("\n", 5))
+  echo("With word wrap:\n")
+  echo(demonnic:fText(testString, nTable) .. "\n")
+  cecho(demonnic:fText(testString, cTable) .. "\n")
+  decho(demonnic:fText(testString, dTable) .. "\n")
+  hecho(demonnic:fText(testString, hTable) .. "\n")
+
+  echo("\n\nWithout word wrap:\n")
+  echo(demonnic:align(testString, nTable) .. "\n")
+  decho(demonnic:dalign(testString, dTable) .. "\n")
+  cecho(demonnic:calign(testString, cTable) .. "\n")
+  hecho(demonnic:halign(testString, hTable) .. "\n")
+end
+</script>
+					<eventHandlerList />
+				</Script>
+				<Script isActive="yes" isFolder="no">
+					<name>reusableFormatter</name>
+					<packageName />
+					<script>--- Stand alone text formatter object. Remembers the options you set and can be adjusted as needed
+-- @module demonnic.textFormatter
+demonnic.TextFormatter = {}
+demonnic.TextFormatter.validFormatTypes = { 'd', 'dec', 'decimal', 'h', 'hex', 'hexidecimal', 'c', 'color', 'colour', 'col', 'name'}
+
+--- Set's the formatting type whether it's for cecho, decho, or hecho
+--@tparam string typeToSet What type of formatter is this? Valid options are { 'd', 'dec', 'decimal', 'h', 'hex', 'hexidecimal', 'c', 'color', 'colour', 'col', 'name'}
+function demonnic.TextFormatter:setType(typeToSet)
+  local isNotValid = not table.contains(self.validFormatTypes, typeToSet)
+  if isNotValid then
+    error("demonnic.TextFormatter:setType: Invalid argument, valid types are:" .. table.concat(self.validFormatTypes, ", "))
+  end
+  self.options.formatType = typeToSet
+end
+
+function demonnic.TextFormatter:toBoolean(thing)
+  if type(thing) ~= "boolean" then
+    if thing == "true" then
+      thing = true
+    elseif thing == "false" then
+      thing = false
+    else
+      return nil
+    end
+  end
+  return thing
+end
+
+function demonnic.TextFormatter:checkString(str)
+  if type(str) ~= "string" then
+    if tostring(str) then
+      str = tostring(str)
+    else
+      return nil
+    end
+  end
+  return str
+end
+
+--- Sets whether or not we should do word wrapping.
+--@tparam boolean shouldWrap should we do wordwrapping?
+function demonnic.TextFormatter:setWrap(shouldWrap)
+  local argumentType = type(shouldWrap)
+  shouldWrap = self:toBoolean(shouldWrap)
+  if shouldWrap == nil then
+    error("demonnic.TextFormatter:setWrap(shouldWrap) Argument error, boolean expected, got " .. argumentType .. ", if you want to set the number of characters wide to format for, use setWidth()")
+  end
+  self.options.wrap = shouldWrap
+end
+
+--- Sets the width we should format for
+--@tparam number width the width we should format for
+function demonnic.TextFormatter:setWidth(width)
+  if type(width) ~= "number" then
+    if tonumber(width) then
+      width = tonumber(width)
+    else
+      error("demonnic.TextFormatter:setWidth(width): Argument error, number expected, got " .. type(width))
+    end
+  end
+  self.options.width = width
+end
+
+--- Sets the cap for the formatter
+--@tparam string cap the string to use for capping the formatted string.
+function demonnic.TextFormatter:setCap(cap)
+  local argumentType = type(cap)
+  local cap = self:checkString(cap)
+  if cap == nil then error("demonnic.TextFormatter:setCap(cap): Argument error, string expect, got " .. argumentType) end
+  self.options.cap = cap
+end
+
+--- Sets the color for the format cap
+--@tparam string capColor Color which can be formatted via Geyser.Color.parse()
+function demonnic.TextFormatter:setCapColor(capColor)
+  local argumentType = type(capColor)
+  local capColor = self:checkString(capColor)
+  if capColor == nil then error("demonnic.TextFormatter:setCapColor(capColor): Argument error, string expected, got " .. argumentType) end
+  self.options.capColor = capColor
+end
+
+--- Sets the color for spacing character
+--@tparam string spacerColor Color which can be formatted via Geyser.Color.parse()
+function demonnic.TextFormatter:setSpacerColor(spacerColor)
+  local argumentType = type(spacerColor)
+  local spacerColor = self:checkString(spacerColor)
+  if spacerColor == nil then error("demonnic.TextFormatter:setSpacerColor(spacerColor): Argument error, string expected, got " .. argumentType) end
+  self.options.spacerColor = spacerColor
+end
+
+--- Sets the color for formatted text
+--@tparam string textColor Color which can be formatted via Geyser.Color.parse()
+function demonnic.TextFormatter:setTextColor(textColor)
+  local argumentType = type(textColor)
+  local textColor = self:checkString(textColor)
+  if textColor == nil then error("demonnic.TextFormatter:setTextColor(textColor): Argument error, string expected, got " .. argumentType) end
+  self.options.textColor = textColor
+end
+
+--- Sets the spacing character to use. Should be a single character
+--@tparam string spacer the character to use for spacing
+function demonnic.TextFormatter:setSpacer(spacer)
+  local argumentType = type(spacer)
+  local spacer = self:checkString(spacer)
+  if spacer == nil then error("demonnic.TextFormatter:setSpacer(spacer): Argument error, string expect, got " .. argumentType) end
+  self.options.spacer = spacer
+end
+
+--- Set the alignment to format for
+--@tparam string alignment How to align the formatted string. Valid options are 'left', 'right', or 'center'
+function demonnic.TextFormatter:setAlignment(alignment)
+  local validAlignments = {
+    "left",
+    "right",
+    "center"
+  }
+  if not table.contains(validAlignments, alignment) then
+    error("demonnic.TextFormatter:setAlignment(alignment): Argument error: Only valid arguments for setAlignment are 'left', 'right', or 'center'. You sent" .. alignment)
+  end
+  self.options.alignment = alignment
+end
+
+--- Set whether the the spacer should go inside the the cap or outside of it
+--@tparam boolean spacerInside 
+function demonnic.TextFormatter:setInside(spacerInside)
+  local argumentType = type(spacerInside)
+  spacerInside = self:toBoolean(spacerInside)
+  if spacerInside == nil then
+    error("demonnic.TextFormatter:setInside(spacerInside) Argument error, boolean expected, got " .. argumentType)
+  end
+  self.options.inside = spacerInside
+end
+
+--- Set whether we should mirror/reverse the caps. IE &lt;&lt; becomes &gt;&gt; if set to true
+--@tparam boolean shouldMirror
+function demonnic.TextFormatter:setMirror(shouldMirror)
+  local argumentType = type(shouldMirror)
+  shouldMirror = self:toBoolean(shouldMirror)
+  if shouldMirror == nil then
+    error("demonnic.TextFormatter:setMirror(shouldMirror): Argument error, boolean expected, got " .. argumentType)
+  end
+  self.options.mirror = shouldMirror
+end
+
+--- Format a string based on the stored options
+--@tparam string str The string to format
+function demonnic.TextFormatter:format(str)
+  return demonnic:fText(str, self.options)
+end
+
+--- Creates and returns a new TextFormatter. For valid options, please see https://github.com/demonnic/fText/wiki/fText
+--@tparam table options the options for the text formatter to use when running format()
+function demonnic.TextFormatter:new(options)
+  if options == nil then options = {} end
+  if options and type(options) ~= "table" then
+    error("demonnic.TextFormatter:new(options): Argument error, table expected, got " .. type(options))
+  end
+  local me = {}
+  me.options = {
+    formatType = "c",
+    wrap = true,
+    width = 80,
+    cap = "",
+    spacer = " ",
+    alignment = "center",
+    inside = true,
+    mirror = false,
+  }
+  for option, value in pairs(options) do
+    me.options[option] = value
+  end
+  setmetatable(me, self)
+  self.__index = self
+  return me
+end
+</script>
+					<eventHandlerList />
+				</Script>
+				<Script isActive="yes" isFolder="no">
+					<name>tableFormatter</name>
+					<packageName />
+					<script>--- Easy formatting for text tables
+-- @module demonnic.TableMaker
+
+demonnic.TableMaker = {
+  headCharacter = "*",
+  footCharacter = "*",
+  edgeCharacter = "*",
+  rowSeparator = "-",
+  separator = "|",
+  colorReset = "&lt;reset&gt;",
+  formatType = "c",
+  printHeaders = true,
+  autoEcho = false,
+}
+
+function demonnic.TableMaker:checkPosition(position, func)
+  if position == nil then position = 0 end
+  if type(position) ~= "number" then
+    if tonumber(position) then
+      position = tonumber(position)
+    else
+      error(func .. ": Argument error: position expected as number, got " .. type(position))
+    end
+  end
+  return position
+end
+
+function demonnic.TableMaker:insert(tbl, pos, item)
+  if pos ~= 0 then
+    table.insert(tbl, pos, item)
+  else
+    table.insert(tbl, item)
+  end
+end
+
+--- Adds a column definition for the table. 
+--@tparam table options Table of options suitable for a TextFormatter object. See https://github.com/demonnic/fText/wiki/fText
+--@tparam number position The position of the column you're adding, counting from the left. If not provided will add it as the last column
+function demonnic.TableMaker:addColumn(options, position)
+  if options == nil then options = {} end
+  if not type(options) == "table" then error("demonnic.TableMaker:addColumn(options, position): Argument error: options expected as table, got " .. type(options)) end
+  local options = table.deepcopy(options)
+  position = self:checkPosition(position, "demonnic.TableMaker:addColumn(options, position)")
+  options.width = options.width or 20
+  options.name = options.name or ""
+  local formatter = demonnic.TextFormatter:new(options)
+  self:insert(self.columns, position, formatter)
+end
+
+--- Deletes a column at the given position
+--@tparam number position the column you wish to delete
+function demonnic.TableMaker:deleteColumn(position)
+  if position == nil then error("demonnic.TableMaker:deleteColumn(position): Argument Error: position as number expected, got nil") end
+  position = self:checkPosition(position)
+  local maxColumn = #self.columns
+  if position &gt; maxColumn then error("demonnic.TableMaker:deleteColumn(position): Argument Error: position provided was larger than number of columns in the table. Number of columns: " .. #self.columns) end
+  table.remove(self.columns, position)
+end
+
+--- Replaces a column at a specific position with the newly provided formatting
+--@tparam table options table of options suitable for a TextFormatter object. See https://github.com/demonnic/fText/wiki/fText
+--@tparam number position which column you are replacing, counting from the left.
+function demonnic.TableMaker:replaceColumn(options, position)
+  if position == nil then
+    error("demonnic.TableMaker:replaceColumn(options, position): Argument error: position as number expected, got nil")
+  end
+  position = self:checkPosition(position)
+  if type(options) ~= "table" then error("demonnic.TableMaker:replaceColumn(options, position): Argument error: options as table expected, got " .. type(options)) end
+  if #self.columns &lt; position then error("demonnic.TableMaker:replaceColumn(options, position): you cannot specify a position higher than the number of columns currently in the TableMaker. You sent:" .. position .. " and there are: " .. #self.columns .. "columns in the TableMaker") end
+  options.width = options.width or 20
+  options.name = options.name or ""
+  local formatter = demonnic.TextFormatter:new(options)
+  self.columns[position] = formatter
+end
+
+--- Adds a row of output to the table
+--@tparam table columnEntries This indexed table contains an entry for each column in the table. Entries in the table must be strings, a table of options for insertPopup or insertLink, or a function which returns one of these things
+--@tparam number position position for the row you want to add, counting from the top down. If not provided defaults to the last line in the table.
+function demonnic.TableMaker:addRow(columnEntries, position)
+  local columnEntriesType = type(columnEntries)
+  if columnEntriesType ~= "table" then
+    error("demonnic.TableMaker:addRow(columnEntries, position): Argument error, columnEntries expected as table, got " .. columnEntriesType)
+  end
+  for _,entry in ipairs(columnEntries) do
+    local entryCheck = self:checkEntry(entry)
+    if entryCheck == 0 then
+      if type(entry) == "function" then
+        error("demonnic.TableMaker:addRow(columnEntries, position): Argument Error, you provided a function for a columnEntry but it does not return a string. We need a string. It was entry number " .. _ .. "in columnEntries")
+      else
+        error("demonnic.TableMaker:addRow(columnEntries, position): Argument error, columnEntries items expected as string, got:" .. type(entry)) 
+      end
+    end
+  end
+  position = self:checkPosition(position, "demonnic.TableMaker:addRow(columnEntries, position)")
+  self:insert(self.rows, position, columnEntries)
+end
+
+--- Deletes the row at the given position
+--@tparam number position the row to delete
+function demonnic.TableMaker:deleteRow(position)
+  if position == nil then error("demonnic.TableMaker:deleteRow(position): Argument Error: position as number expected, got nil") end
+  position = self:checkPosition(position, "demonnic.TableMaker:deleteRow(position)")
+  local maxRow = #self.rows
+  if position &gt; maxRow then error("demonnic.TableMaker:deleteRow(position): Argument Error: position given was &gt; the number of rows we have # of rows is:" .. maxRow) end
+  table.remove(self.rows, position)
+end
+
+--- Replaces a row of output in the table
+--@tparam table columnEntries This indexed table contains an entry for each column in the table. Entries in the table must be strings, a table of options for insertPopup or insertLink, or a function which returns one of these things
+--@tparam number position position for the row you want to add, counting from the top down.
+function demonnic.TableMaker:replaceRow(columnEntries, position)
+  if position == nil then
+    error("demonnic.TableMaker:replaceRow(columnEntries, position): ArgumentError: position expected as number, received nil")
+  end
+  position = self:checkPosition(position, "demonnic.TableMaker:replaceRow(columnEntries, position)")
+  if #self.rows &lt; position then
+    error("demonnic.TableMaker:replaceRow(columnEntries, position): position cannot be greater than the number of rows already in the tablemaker. You provided: " .. position .. " and there are " .. #self.rows .. "rows in the TableMaker")
+  end
+  for _,entry in ipairs(columnEntries) do
+    local entryCheck = self:checkEntry(entry)
+    if entryCheck == 0 then
+      if type(entry) == "function" then
+        error("demonnic.TableMaker:replaceRow(columnEntries, position): Argument Error: you provided a function for a columnEntry but it does not return a string. We need a string. It was entry number " .. _ .. "in columnEntries")
+      else
+        error("demonnic.TableMaker:replaceRow(columnEntries, position): Argument error: columnEntries items expected as string, got:" .. type(entry))
+      end
+    end
+  end
+  self.rows[position] = columnEntries
+end
+
+function demonnic.TableMaker:checkEntry(entry)
+  local allowedTypes = {
+    "string"
+  }
+  if self.allowPopups then
+    table.insert(allowedTypes, "table")
+  end
+  local entryType = type(entry)
+  if entryType == "function" then
+    entryType = type(entry())
+  end
+  if table.contains(allowedTypes, entryType) then
+    return entry
+  else
+    return 0
+  end
+end
+
+function demonnic.TableMaker:checkNumber(num)
+  if num == nil then num = 0 end
+  if not tonumber(num) then num = 0 end
+  return tonumber(num)
+end
+
+--- Sets a specific cell's display information
+--@tparam number row the row number of the cell, counted from the top down
+--@tparam number column the column number of the cell, counted from the left
+--@param entry What to set the entry to. Must be a string, or a table of options for insertLink/insertPopup if allowPopups is set. Or a function which returns one of these things
+function demonnic.TableMaker:setCell(row, column, entry)
+  local maxRow = #self.rows
+  local maxColumn = #self.columns
+  local ae = "demonnic.TableMaker:setCell(row, column, entry): Argument Error:"
+  row = self:checkNumber(row)
+  if row == 0 then error(ae .. " row must be a number, you provided " .. type(row)) end
+  column = self:checkNumber(column)
+  if column == 0 then error(ae .. " column must be a number, you provided " .. type(column)) end
+  if row &gt; maxRow then error(ae .. " row is higher than the number of rows in the table. Highest row:" .. maxRow) end
+  if column &gt; maxColumn then error(ae .. " column is higher than the number of columns in the table. Highest column:" .. maxColumn) end
+  local entryType = type(entry)
+  entry = self:checkEntry(entry)
+  if entry == 0 then
+    if type(entry) == "function" then 
+      error(ae .. " entry was provided as a function, but does not return a string. We need a string in the end")
+    else 
+      error("demonnic.TableMaker:setCell(row, column, entry): Argument Error: entry must be a string, or a function which returns a string. You provided a " .. entryType)
+    end
+  end
+  self.rows[row][column] = entry
+end
+
+function demonnic.TableMaker:totalWidth()
+  local width = 0
+  local numberOfColumns = #self.columns
+  local separatorWidth = string.len(self.separator)
+  local edgeWidth = string.len(self.edgeCharacter) * 2
+  for _,column in ipairs(self.columns) do
+    width = width + column.options.width
+  end
+  separatorWidth = separatorWidth * (numberOfColumns - 1)
+  width = width + edgeWidth + separatorWidth
+  return width
+end
+
+function demonnic.TableMaker:getType()
+  local dec = {"d", "decimal", "dec"}
+  local hex = {"h", "hexidecimal", "hex"}
+  local col = {"c", "color", "colour", "col", "name"}
+  if table.contains(dec, self.formatType) then
+    return 'd'
+  elseif table.contains(hex, self.formatType) then
+    return 'h'
+  elseif table.contains(col, self.formatType) then
+    return 'c'
+  else
+    return ''
+  end
+end
+
+function demonnic.TableMaker:echo(message, echoType, ...)
+  local fType = self:getType()
+  local consoleType = type(self.autoEchoConsole)
+  local console = ""
+  if echoType == nil then echoType = "" end
+  if consoleType == "string" then
+    console = self.autoEchoConsole
+  else
+    console = self.autoEchoConsole.name
+  end
+  local functionName = string.format("%secho%s", fType, echoType)
+  local func = _G[functionName]
+  if fType == "" then formatted = false end
+  if echoType == "" then
+    func(console, message)
+  else
+    func(console, message, ...)
+  end
+end
+
+function demonnic.TableMaker:scanRow(rowToScan)
+  local row = table.deepcopy(rowToScan)
+  local rowEntries = #row
+  local numberOfColumns = #self.columns
+  local columns = {}
+  local linesInRow = 0
+  local rowText = ""
+  local ec = self.frameColor .. self.edgeCharacter .. self.colorReset
+  local sep = self.separatorColor .. self.separator .. self.colorReset
+
+  if rowEntries &lt; numberOfColumns then
+    entriesNeeded = numberOfColumns - rowEntries
+    for i = 1,entriesNeeded do
+      table.insert(row, "")
+    end
+  end
+  for index,formatter in ipairs(self.columns) do
+    local str = row[index]
+    local column = ""
+    if type(str) == "function" then str = str() end
+    column = formatter:format(str)
+    table.insert(columns, column:split("\n"))
+  end
+  for _,rowLines in ipairs(columns) do
+    if linesInRow &lt; #rowLines then linesInRow = #rowLines end
+  end
+  for index,rowLines in ipairs(columns) do
+    if #rowLines &lt; linesInRow then
+      local neededLines = linesInRow - #rowLines
+      for i=1,neededLines do
+        table.insert(rowLines, self.columns[index]:format(""))
+      end
+    end
+  end
+  for i= 1,linesInRow do
+    local thisLine = ec
+    for index,column in ipairs(columns) do
+      if index == 1 then
+        thisLine = string.format("%s%s", thisLine, column[i])
+      else
+        thisLine = string.format("%s%s%s", thisLine, sep, column[i])
+      end
+    end
+    thisLine = string.format("%s%s", thisLine, ec)
+    if rowText == "" then
+      rowText = thisLine
+    else
+      rowText = string.format("%s\n%s", rowText, thisLine)
+    end
+  end
+  return rowText
+end
+
+function demonnic.TableMaker:echoRow(rowToScan)
+  local row = table.deepcopy(rowToScan)
+  local rowEntries = #row
+  local numberOfColumns = #self.columns
+  local columns = {}
+  local linesInRow = 0
+  local ec = self.frameColor .. self.edgeCharacter .. self.colorReset
+  local sep = self.separatorColor .. self.separator .. self.colorReset
+  if rowEntries &lt; numberOfColumns then
+    entriesNeeded = numberOfColumns - rowEntries
+    for i = 1,entriesNeeded do
+      table.insert(row, "")
+    end
+  end
+  for index,formatter in ipairs(self.columns) do
+    local str = row[index]
+    local column = ""
+    if type(str) == "function" then str = str() end
+    if type(str) == "table" then 
+      str = str[1]
+    end
+    column = formatter:format(str)
+    table.insert(columns, column:split("\n"))
+  end
+  for _,rowLines in ipairs(columns) do
+    if linesInRow &lt; #rowLines then linesInRow = #rowLines end
+  end
+  for index,rowLines in ipairs(columns) do
+    if #rowLines &lt; linesInRow then
+      local neededLines = linesInRow - #rowLines
+      for i=1,neededLines do
+        table.insert(rowLines, self.columns[index]:format(""))
+      end
+    end
+  end
+  for i= 1,linesInRow do
+    self:echo(ec)
+    for index,column in ipairs(columns) do
+      local message = column[i]
+      if index ~= 1 then 
+        self:echo(sep)
+      end
+      if type(row[index]) == "string" then
+        self:echo(message)
+      elseif type(row[index]) == "table" then
+        local rowEntry = row[index]
+        local echoType = ""
+        if type(rowEntry[2]) == "string" then
+          echoType = "Link"
+        elseif type(rowEntry[2]) == "table" then
+          echoType = "Popup"
+        end
+        self:echo(message, echoType, rowEntry[2], rowEntry[3], rowEntry[4] or true)
+      end
+    end
+    self:echo(ec)
+    if i ~= linesInRow then
+      self:echo("\n")
+    end
+  end
+end
+
+function demonnic.TableMaker:makeHeader()
+  local totalWidth = self:totalWidth()
+  local ec = self.frameColor .. self.edgeCharacter .. self.colorReset
+  local sep = self.separatorColor .. self.separator .. self.colorReset
+  local header = self.frameColor .. string.rep(self.headCharacter, totalWidth) .. self.colorReset
+  local columnHeaders = ""
+  if self.printHeaders then
+    local columnEntries = {}
+    for _,v in ipairs(self.columns) do
+      table.insert(columnEntries, v:format(v.options.name))
+    end
+    local divWithNewlines = string.format("\n%s", self:createRowDivider())
+    columnHeaders = string.format("\n%s%s%s%s", ec, table.concat(columnEntries, sep), ec, divWithNewlines)
+  end
+  header = string.format("%s%s", header, columnHeaders)
+  return header
+end
+
+function demonnic.TableMaker:createRowDivider()
+  local columnPieces = {}
+  for _,v in ipairs(self.columns) do
+    local piece = string.format("%s%s%s", self.separatorColor, string.rep(self.rowSeparator, v.options.width), self.colorReset)
+    table.insert(columnPieces, piece)
+  end
+  local ec = self.frameColor .. self.edgeCharacter .. self.colorReset
+  local sep = self.separatorColor .. self.separator .. self.colorReset
+  return string.format("%s%s%s", ec, table.concat(columnPieces, sep), ec)
+end
+
+--- enables making cells which incorporate insertLink/insertPopup
+function demonnic.TableMaker:enablePopups()
+  self.autoEcho = true
+  self.allowPopups = true
+end
+
+--- enables autoEcho so that when assemble is called it echos automatically
+function demonnic.TableMaker:enableAutoEcho()
+  self.autoEcho = true
+end
+
+--- disables autoecho. Cannot be used if allowPopups is set
+function demonnic.TableMaker:disableAutoEcho()
+  if self.allowPopups then
+    error("demonnic.TableMaker:disableAutoEcho(): you cannot disable autoEcho once you have enabled popups.")
+  else
+    self.autoEcho = false
+  end
+end
+
+--- Enables automatically clearing the miniconsole we echo to
+function demonnic.TableMaker:enableAutoClear()
+  self.autoClear = true
+end
+
+--- Disables automatically clearing the miniconsole we echo to
+function demonnic.TableMaker:disableAutoClear()
+  self.autoClear = false
+end
+
+--- Set the miniconsole to echo to
+--@param console The miniconsole to autoecho to. Set to "main" or do not pass the parameter to autoecho to the main console. Can be a string name of the console, or a Geyser MiniConsole
+function demonnic.TableMaker:setAutoEchoConsole(console)
+  local funcName = "demonnic.TableMaker:setAutoEchoConsole(console)"
+  if console == nil then 
+    console = "main" 
+  end
+  local consoleType = type(console)
+  if consoleType ~= "string" and consoleType ~= "table" then
+    error(funcName .. " ArgumentError: console as string or Geyser.MiniConsole expected, got " .. consoleType)
+  elseif consoleType == "table" and console.type ~= "miniConsole" then
+    error(funcName .. " ArgumentError: console received was a table and may be a Geyser object, but console.type is not miniConsole, it is " .. console.type)
+  end
+  self.autoEchoConsole = console
+end
+
+--- Assemble the table. If autoEcho is enabled/set to true, will automatically echo. Otherwise, returns the formatted string to echo the table
+function demonnic.TableMaker:assemble()
+  if self.allowPopups and self.autoEcho then
+    self:popupAssemble()
+  else
+    return self:textAssemble()
+  end
+end
+
+function demonnic.TableMaker:popupAssemble()
+  if self.autoClear then
+    local console = self.autoEchoConsole
+    if console and console ~= "main" then
+      if type(console) == "table" then
+        console = console.name
+      end
+      clearWindow(console)
+    end
+  end
+  local divWithNewLines = string.format("\n%s\n", self:createRowDivider())
+  local header = self:makeHeader() .. "\n"
+  local footer = string.format("\n%s%s%s\n", self.frameColor, string.rep(self.footCharacter, self:totalWidth()), self.colorReset)
+  self:echo(header)
+  for _,row in ipairs(self.rows) do
+    if _ ~= 1 then
+      self:echo(divWithNewLines)
+    end
+    self:echoRow(row)
+  end
+  self:echo(footer)
+end
+
+function demonnic.TableMaker:textAssemble()
+  local sheet = ""
+  local rows = {}
+  for _,row in ipairs(self.rows) do
+    table.insert(rows, self:scanRow(row))
+  end
+  local divWithNewlines = string.format("\n%s\n", self:createRowDivider())
+  local footer = string.format("%s%s%s", self.frameColor, string.rep(self.footCharacter, self:totalWidth()), self.colorReset)
+  sheet = string.format("%s\n%s\n%s\n", self:makeHeader(), table.concat(rows, divWithNewlines), footer)
+  if self.autoEcho then
+    local console = self.autoEchoConsole or "main"
+    if type(console) == "table" then console = console.name end
+    if self.autoClear and console ~= "main" then
+      clearWindow(console)
+    end
+    self:echo(sheet)
+  end
+  return sheet
+end
+
+--- Creates and returns a new TableMaker. See https://github.com/demonnic/fText/wiki/TableMaker for valid entries to the options table.
+--@tparam table options table of options for the TableMaker object
+function demonnic.TableMaker:new(options)
+  local funcName = "emonnic.TableMaker:new(options)"
+  local me = {}
+  setmetatable(me, self)
+  self.__index = self
+  if options == nil then options = {} end
+  if type(options) ~= "table" then
+    error("demonnic.TableMaker:new(options): ArgumentError: options expected as table, got " .. type(options))
+  end
+  local options = table.deepcopy(options)
+  if options.allowPopups == true then
+    options.autoEcho = true
+  else
+    options.allowPopups = false
+  end
+  local columns = false
+  if options.columns then
+    if type(options.columns) ~= "table" then error("demonnic.TableMaker:new(options): option error: You provided an options.columns entry of type " .. type(options.columns) .. " and columns must a table with entries suitable for demonnic.TableFormatter:addColumn().") end
+    columns = table.deepcopy(options.columns)
+    options.columns = nil
+  end
+  local rows = false
+  if options.rows then
+    if type(options.rows) ~= "table" then error("demonnic.tableMaker:new(options): option error: You provided an options.rows entry of type " .. type(options.rows) .. " and rows must be a table with entrys suitable for demonnic.TableFormatter:addRow()") end
+    rows = table.deepcopy(options.rows)
+    options.rows = nil
+  end
+  for option, value in pairs(options) do
+    me[option] = value
+  end
+  local dec = {"d", "decimal", "dec"}
+  local hex = {"h", "hexidecimal", "hex"}
+  local col = {"c", "color", "colour", "col", "name"}
+  if table.contains(dec, me.formatType) then
+    me.frameColor = me.frameColor or "&lt;255,255,255&gt;"
+    me.separatorColor = me.separatorColor or me.frameColor
+    me.colorReset = "&lt;r&gt;"
+  elseif table.contains(hex, me.formatType) then
+    me.frameColor = me.frameColor or "#ffffff"
+    me.separatorColor = me.separatorColor or me.frameColor
+    me.colorReset = "#r"
+  elseif table.contains(col, me.formatType) then
+    me.frameColor = me.frameColor or "&lt;white&gt;"
+    me.separatorColor = me.separatorColor or me.frameColor
+    me.colorReset = "&lt;reset&gt;"
+  else
+    me.frameColor = ""
+    me.separatorColor = ""
+    me.colorReset = ""
+  end
+  me.columns = {}
+  me.rows = {}
+  if columns then
+    for _,column in ipairs(columns) do
+      me:addColumn(column)
+    end
+  end
+  if rows then
+    for _,row in ipairs(rows) do
+      me:addRow(row)
+    end
+  end
+  return me
+end
+</script>
+					<eventHandlerList />
+				</Script>
+			</ScriptGroup>
+		</ScriptGroup>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>common</name>
+			<packageName />
+			<script />
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>scripts from njs50-common</name>
+				<packageName />
+				<script>catalog = catalog or {}
+catalog.common = catalog.common or {}
+
+
+catalog.common.getNumber = function (text)
+
+	local wordToNumberData = {
+    	a = 1,
+    	an = 1,
+    	the = 1,
+		one = 1,
+		two = 2,
+		three = 3,
+		four = 4,
+		five = 5,
+		six = 6,
+		seven = 7,
+		eight = 8,
+		nine = 9,
+		ten = 10,
+		eleven = 11,
+		twelve = 12,
+		thrirteen = 13,
+		fourteen = 14,
+    fifteen = 15,
+    twenty = 20,
+    thirty = 30,
+    forty = 40,
+    fifty = 50,
+	}
+
+	local numTxt = rex.match(text, [[^\S+]])
+
+	if (numTxt) then
+		return wordToNumberData[string.lower(numTxt)] or 1
+	else
+		-- either it's more than 14 or a proper noun. i.e Stinky (your mount
+		return 1
+	end
+
+end
+
+catalog.common.tempMatchAllRegexCount = catalog.common.tempMatchAllRegexCount or 0
+catalog.common.tempMatchAllRegex = function(substring, code, expireAfter)
+-- tempComplexRegexTrigger(name, regex, code, multiline, fgColor, bgColor, filter, matchAll, highlightFgColor, highlightBgColor, playSoundFile, fireLength, lineDelta, expireAfter)
+  
+  -- if we have overwritten this function to return the correct id
+  if (oTempComplexRegexTrigger) then  
+    return tempComplexRegexTrigger("njs50.tempMatchAllRegex", substring, code, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, expireAfter)
+  else
+    catalog.common.tempMatchAllRegexCount = catalog.common.tempMatchAllRegexCount + 1
+    local id = "njs50.tempMatchAllRegex_" .. tostring(catalog.common.tempMatchAllRegexCount)
+    tempComplexRegexTrigger(id, substring, code, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, expireAfter)
+    return id
+  end
+  
+end
+
+
+catalog.common.onNextEvent = function (evt, callback)
+
+	if not evt then
+
+		echo('no event defined!!!')
+		error()
+
+	end
+
+
+	local handlerId = nil
+	local cb2 = callback
+
+	local cb = function (evt, ...)
+		-- kill the event handler now in case the event errors preventing it's destruction
+		killAnonymousEventHandler(handlerId)
+		-- cecho('\n&lt;blue&gt;self destructing handler: ' .. evt .. ' : ' .. tostring(handlerId) .. '\n')
+		cb2(evt, unpack(arg))
+	end
+
+	handlerId = registerAnonymousEventHandler(evt, cb, true)
+
+	-- cecho('\n&lt;green&gt;registering self destruct event: ' .. evt .. ' : ' .. tostring(handlerId) .. '\n')
+
+	return function ()
+		-- cecho('\n&lt;orange&gt;destructing handler: ' .. evt .. ' : ' .. tostring(handlerId) .. '\n')
+		killAnonymousEventHandler(handlerId)
+	end
+
+end
+
+
+catalog.common.slots = {
+  "right hand",
+  "left hand",
+  "left hand finger",
+  "right hand finger",
+  "right wrist",
+  "left wrist",
+  "head",
+  "body",
+  "nearby",
+  "arms",
+  "hands",
+  "feet",
+  "legs",
+  "waist",
+  "neck"
+}
+
+catalog.common.layers = { 'bottom', 'under', 'base', 'over', 'top' }
+
+
+-- can add items to override from shortening if they mess up gear swapping
+catalog.common.itemShortenOverride = catalog.common.itemShortenOverride or {}
+catalog.common.itemShortenOverride['darkgem'] = 'darkgem'
+catalog.common.itemShortenOverride['darklight'] = 'darklight'
+catalog.common.itemShortenOverride['shadowbox'] = 'shadowbox'
+
+catalog.common.itemShortenOverride['woolen.socks'] = 'woolen.sock'
+catalog.common.itemShortenOverride['woolen socks'] = 'woolen.sock'
+
+catalog.common.itemShortenOverride['woolen.blanket'] = 'woolen.blank'
+catalog.common.itemShortenOverride['woolen blanket'] = 'woolen.blank'
+
+
+-- a bracer of the emerald moon                          55   armor    AC: 4
+-- [4396] an emerald bracelet 
+
+-- bung keywords on item
+catalog.common.itemShortenOverride['orange headband'] = 'orange.strip'
+catalog.common.itemShortenOverride['emerald bracelet'] = 'emerald.bracelet'
+catalog.common.itemShortenOverride['orange.headband'] = 'orange.strip'
+catalog.common.itemShortenOverride['emerald.bracelet'] = 'emerald.bracelet'
+catalog.common.itemShortenOverride["flowing silver greatsword 'Unbending Will'"] = 'flow.silv.grea'
+catalog.common.itemShortenOverride["flowing silver shortspear 'Hand of the Just'"] = 'flowing.silver.shortspear'
+catalog.common.itemShortenOverride["flowing.silver.greatsword.Unbending"] = 'flow.silv.grea'
+catalog.common.itemShortenOverride["flowing.silver.shortspear.Hand.the"] = 'flow.silv.shor'
+
+
+
+catalog.common.dotCase = function(string)
+
+	if (not string or string == '') then
+		return ''
+	end
+	return rex.gsub(string, [[(?i)\b(the|or|an|a|of|with|and|A|An|The) ]], ''):gsub(' ', '.')
+end
+
+
+catalog.common.itemSanitize = function(string, keepEnchant)
+
+  if (not string or string == '') then
+    return ''
+  end
+
+  string = rex.gsub(string, [[(\+chaotic\+,? |\+lawful\+,? |\+evil\+,? |\+good\+,? |thanatotic,? |acid-dripping,? |divinely flamed,? |an empty,? |empty,?  |spiteful,? |jinxing,? |flaming,? |labeled )]], '')
+
+  if (keepEnchant ~= true) then
+    string = rex.gsub(string, [[(\s\+\d)]], '')  
+  end
+
+  if (not rex.find(string, [[frost-covered ring]])) then
+    string = rex.gsub(string, [[frost-covered,? ]], '')
+  end
+  
+  -- only use first word in item of 'stupid name'  
+  string = rex.gsub(string, [['(.+?)\s(.+)']], '%1')
+
+
+  string = rex.gsub(string,[[^an enchanted,? ([aeiou])]], 'an %1')
+  string = rex.gsub(string,[[^an enchanted,?]], 'a')
+  string = rex.gsub(string,[[of enchanted]], 'of')
+  string = rex.gsub(string,[[^enchanted,? ]], '')
+  
+  return string
+
+end
+
+
+
+catalog.common.itemShorten = function(item, keepEnchant)
+
+  item, itemEnchant = rex.match(item, [[^(.+?)( \+\d)?$]])
+
+  item = catalog.common.dotCase(catalog.common.itemSanitize(item, keepEnchant))
+  
+  
+  if (catalog.common.itemShortenOverride[item]) then
+    item = catalog.common.itemShortenOverride[item]    
+  else  
+    item = rex.gsub(	rex.gsub(item,"'(.*)'",'%1'),
+      	'([^.][^.][^.][^.]?)[^.]+',
+      	'%1'
+    )
+  end
+  
+  if keepEnchant and itemEnchant then
+    item = item .. rex.gsub(itemEnchant, ' ', '.')
+  end
+
+  return item
+
+end
+
+</script>
+				<eventHandlerList />
+			</Script>
+		</ScriptGroup>
+		<Script isActive="yes" isFolder="no">
+			<name>catalog.posInstallHandler</name>
+			<packageName />
+			<script>catalog.posInstallHandler = function(evt, name, file)
+
+  -- after installing the package manager see if there is a package we should install
+  if (name == "tfecat") then        
+    expandAlias('tfecat help')
+  end
+
+end</script>
+			<eventHandlerList>
+				<string>sysInstallPackage</string>
+			</eventHandlerList>
+		</Script>
+	</ScriptPackage>
+	<KeyPackage />
+	<HelpPackage>
+		<helpURL />
+	</HelpPackage>
+</MudletPackage>
